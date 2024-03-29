@@ -1,4 +1,4 @@
-import tkinter as tk
+import tkinter as tk 
 from tkinter import ttk, filedialog, messagebox, simpledialog
 import re
 import os
@@ -80,9 +80,6 @@ def create_crud_files(folder_name):
 
     messagebox.showinfo("CRUD Files", f"CRUD files created in '{full_path}' directory.")
 
-
-
-
 def generate_controller(table_name, save_path):
     controller_content = f"""<?php
 
@@ -161,7 +158,6 @@ def create_controller(table_name):
         messagebox.showerror("Error", "No valid table name found. Please check your input.")
 
 
-
 def generate_model(table_name, fields):
     # Solicita al usuario que seleccione la ruta de guardado
     root = tk.Tk()
@@ -205,7 +201,6 @@ class {table_name.capitalize()} extends Model
     messagebox.showinfo("Model Generated", f"Model file generated at: '{file_path}'")
 
 
-
 def sql_to_laravel_type(sql_type):
     type_mapping = {
         'varchar': 'string',
@@ -227,7 +222,6 @@ def sql_to_laravel_type(sql_type):
             return laravel_type, None, None
     else:
         return 'string', None, None
-
 
 def generate_migration_from_sql(sql_schema, save_path=None):
     lines = sql_schema.strip().split('\n')
@@ -285,7 +279,6 @@ class Create{pluralizar(table_name.capitalize())}Table extends Migration
 """
     return migration_content
 
-
 def generate_migration_filename(table_name):
     # Obtener la fecha y hora actuales con el formato de Laravel para nombres de archivos de migración
     timestamp = datetime.datetime.now().strftime('%Y_%m_%d_')
@@ -296,7 +289,6 @@ def generate_migration_filename(table_name):
     plural_table_name = pluralizar(table_name.lower())
 
     return f"{timestamp}{random_id}_create_{plural_table_name}_table.php"
-
 
 def generate_migration_only():
     save_path = filedialog.askdirectory()
@@ -313,7 +305,6 @@ def generate_migration_only():
         messagebox.showinfo(
             "Migration Generated", f"Migration file has been generated at: '{file_path}'")
 
-
 def write_to_file(filename, content, save_path):
     file_path = os.path.join(save_path, filename)
     with open(file_path, 'w') as file:
@@ -321,13 +312,11 @@ def write_to_file(filename, content, save_path):
     messagebox.showinfo(
         "File Generated", f"File {filename} has been generated at: '{file_path}'")
 
-
 def generate_routes():
     global table_name
     save_path = filedialog.askdirectory()
     if save_path and table_name:
         generate_routes_content(table_name, save_path)
-
 
 def generate_routes_content(table_name, save_path):
     routes_content = f"""<?php
@@ -355,13 +344,11 @@ Route::resource('/{pluralizar(table_name.lower())}', {table_name.capitalize()}Co
 """
     write_to_file('web.php', routes_content, save_path)
 
-
 def toggle_value(item, index, values_list):
     item_list = list(item)
     current_value = item_list[index]
     item_list[index] = values_list[1] if current_value == values_list[0] else values_list[0]
     return item_list
-
 
 def on_field_click(event):
     region = fields_table.identify_region(event.x, event.y)
@@ -378,7 +365,6 @@ def on_field_click(event):
     elif region == 'heading':
         return "break"
 
-
 def update_field_data(row_id, col_index, value):
     field_name = fields_table.item(row_id, 'values')[0]
     field_info = next(
@@ -390,7 +376,6 @@ def update_field_data(row_id, col_index, value):
             field_info['nullable'] = (value == CHECKBOX_TICKED)
         elif col_index == 5:
             field_info['mandatory'] = (value == CHECKBOX_TICKED)
-
 
 def edit_field_details(event):
     region = fields_table.identify_region(event.x, event.y)
@@ -421,7 +406,6 @@ def update_field_data_type_size(row_id, col_num, value):
         elif col_num == 2:  # Size
             field_info['size'] = value
 
-
 def process_sql_and_update():
     sql = sql_input_text.get("1.0", tk.END)
     global table_name, fields
@@ -447,6 +431,15 @@ def load_fields_into_ui(fields):
 app = tk.Tk()
 app.title("CRUD Generator for Laravel")
 
+# Definir los estilos para los botones con colores personalizados
+style = ttk.Style()
+style.configure('Pastel.TButton', borderwidth=0, width=20)
+
+style.configure('Button1.TButton', background='#FFD700')  # Amarillo
+style.configure('Button2.TButton', background='#19A6CC')  # Azul claro
+style.configure('Button3.TButton', background='#3CCC19')  # create
+style.configure('Button4.TButton', background='#98FB98')  # Verde claro
+
 # SQL input area
 sql_input_frame = tk.Frame(app)
 sql_input_frame.pack(fill='x', padx=10, pady=10)
@@ -456,8 +449,7 @@ sql_input_text = tk.Text(sql_input_frame, height=10)
 sql_input_text.pack(side='left', fill='x', expand=True)
 
 # Button to process SQL input
-process_button = tk.Button(app, text="Process SQL",
-                           command=process_sql_and_update)
+process_button = ttk.Button(app, text="Process SQL", command=process_sql_and_update, style='Button1.TButton')
 process_button.pack(pady=5)
 
 # Table to display detected fields
@@ -476,19 +468,21 @@ buttons_frame = tk.Frame(app)
 buttons_frame.pack(fill='x', padx=10, pady=5)
 
 # Organiza los botones lado a lado dentro del frame buttons_frame
-create_crud_files_button = tk.Button(buttons_frame, text="Create CRUD Files", command=lambda: create_crud_files(table_name.lower()))
+
+create_crud_files_button = ttk.Button(buttons_frame, text="Create CRUD Files", command=lambda: create_crud_files(table_name.lower()), style='Button3.TButton')
 create_crud_files_button.pack(side='left', fill='x', expand=True, padx=2)
 
-create_controller_button = tk.Button(buttons_frame, text="Create Controller", command=lambda: create_controller(table_name))
+create_controller_button = ttk.Button(buttons_frame, text="Create Controller", command=lambda: create_controller(table_name), style='Button3.TButton')
 create_controller_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_model_button = tk.Button(buttons_frame, text="Generate Model", command=lambda: generate_model(table_name, fields))
+generate_model_button = ttk.Button(buttons_frame, text="Generate Model", command=lambda: generate_model(table_name, fields), style='Button2.TButton')
 generate_model_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_migration_button = tk.Button(buttons_frame, text="Generate Migration", command=generate_migration_only)
+generate_migration_button = ttk.Button(buttons_frame, text="Generate Migration", command=generate_migration_only, style='Button2.TButton')
 generate_migration_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_routes_button = tk.Button(buttons_frame, text="Generate Routes", command=generate_routes)
+generate_routes_button = ttk.Button(buttons_frame, text="Generate Routes", command=generate_routes, style='Button2.TButton')
+
 generate_routes_button.pack(side='left', fill='x', expand=True, padx=2)
 
 # Add bindings for click to toggle and double-click to edit
