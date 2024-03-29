@@ -80,9 +80,6 @@ def create_crud_files(folder_name):
 
     messagebox.showinfo("CRUD Files", f"CRUD files created in '{full_path}' directory.")
 
-
-
-
 def generate_controller(table_name, save_path):
     controller_content = f"""<?php
 
@@ -160,6 +157,7 @@ def create_controller(table_name):
     else:
         messagebox.showerror("Error", "No valid table name found. Please check your input.")
 
+
 def generate_model(table_name, fields):
     # Solicita al usuario que seleccione la ruta de guardado
     root = tk.Tk()
@@ -201,6 +199,7 @@ class {table_name.capitalize()} extends Model
     with open(file_path, 'w') as file:
         file.write(model_content)
     messagebox.showinfo("Model Generated", f"Model file generated at: '{file_path}'")
+
 
 def sql_to_laravel_type(sql_type):
     type_mapping = {
@@ -469,6 +468,7 @@ buttons_frame = tk.Frame(app)
 buttons_frame.pack(fill='x', padx=10, pady=5)
 
 # Organiza los botones lado a lado dentro del frame buttons_frame
+
 create_crud_files_button = ttk.Button(buttons_frame, text="Create CRUD Files", command=lambda: create_crud_files(table_name.lower()), style='Button3.TButton')
 create_crud_files_button.pack(side='left', fill='x', expand=True, padx=2)
 
@@ -482,6 +482,7 @@ generate_migration_button = ttk.Button(buttons_frame, text="Generate Migration",
 generate_migration_button.pack(side='left', fill='x', expand=True, padx=2)
 
 generate_routes_button = ttk.Button(buttons_frame, text="Generate Routes", command=generate_routes, style='Button2.TButton')
+
 generate_routes_button.pack(side='left', fill='x', expand=True, padx=2)
 
 # Add bindings for click to toggle and double-click to edit
