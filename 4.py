@@ -425,28 +425,33 @@ for col in fields_table['columns']:
     fields_table.column(col, anchor='center', width=120)
 fields_table.pack(fill='both', expand=True)
 
-# Button to create CRUD files
+# Buttons for CRUD file generation
+crud_button_frame = tk.Frame(app)
+crud_button_frame.pack(fill='x', padx=10, pady=(0, 10))
+
 create_crud_files_button = tk.Button(
-    app, text="Create CRUD Files", command=lambda: create_crud_files(table_name.lower()))
-create_crud_files_button.pack(pady=5)
+    crud_button_frame, text="Create CRUD Files", command=lambda: create_crud_files(table_name.lower()), bg="green")
+create_crud_files_button.pack(side='left', padx=(0, 5))
 
 # New Button to create Controller
 create_controller_button = tk.Button(
-    app, text="Create Controller", command=lambda: create_controller(table_name))
-create_controller_button.pack(pady=5)
+    crud_button_frame, text="Create Controller", command=lambda: create_controller(table_name), bg="green")
+create_controller_button.pack(side='left', padx=(0, 5))
+
 # Add a button for generating the model, assuming table_name and fields are properly populated beforehand
 generate_model_button = tk.Button(
-    app, text="Generate Model", command=lambda: generate_model(table_name, fields))
-generate_model_button.pack(pady=5)
+    crud_button_frame, text="Generate Model", command=lambda: generate_model(table_name, fields), bg="blue")
+generate_model_button.pack(side='left', padx=(0, 5))
+
 # boton de migracion
 generate_migration_button = tk.Button(
-    app, text="Generate Migration", command=generate_migration_only)
-generate_migration_button.pack(pady=5)
-# rutas
+    crud_button_frame, text="Generate Migration", command=generate_migration_only, bg="blue")
+generate_migration_button.pack(side='left', padx=(0, 5))
 
+# rutas
 generate_routes_button = tk.Button(
-    app, text="Generate Routes", command=generate_routes)
-generate_routes_button.pack(pady=5)
+    crud_button_frame, text="Generate Routes", command=generate_routes, bg="blue")
+generate_routes_button.pack(side='left', padx=(0, 5))
 
 # Add bindings for click to toggle and double-click to edit
 fields_table.bind('<Button-1>', on_field_click)
