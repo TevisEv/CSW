@@ -10,14 +10,15 @@ import random
 CHECKBOX_TICKED = "☑"
 CHECKBOX_UNTICKED = "☐"
 
+
 def pluralizar(palabra):
-    if palabra.endswith('a') or palabra.endswith('e') or palabra.endswith('i') or palabra.endswith('o') or palabra.endswith('u'):
+    if palabra.endswith(('a', 'e', 'i', 'o', 'u')):
         return palabra + 's'
     elif palabra.endswith('z'):
         return palabra[:-1] + 'ces'
     elif palabra.endswith('ión'):
         return palabra[:-3] + 'iones'
-    elif palabra.endswith('r') or palabra.endswith('l') or palabra.endswith('n') or palabra.endswith('d'):
+    elif palabra.endswith(('r', 'l', 'n', 'd')):
         return palabra + 'es'
     else:
         return palabra + 'es'
@@ -183,7 +184,8 @@ def sql_to_laravel_type(sql_type):
         'numeric': 'decimal',
         'date': 'date'
     }
-    match = re.match(r"(\w+)(?:\((\d+)(?:,(\d+))?\))?", sql_type, re.IGNORECASE)
+    match = re.match(r"(\w+)(?:\((\d+)(?:,(\d+))?\))?",
+                     sql_type, re.IGNORECASE)
     if match:
         sql_data_type, size, decimal_place = match.groups()
         laravel_type = type_mapping.get(sql_data_type.lower(), 'string')
@@ -195,8 +197,6 @@ def sql_to_laravel_type(sql_type):
             return laravel_type, None, None
     else:
         return 'string', None, None
-
-
 
 
 def generate_migration_from_sql(sql_schema, save_path=None):
@@ -262,11 +262,8 @@ def generate_migration_filename(table_name):
     # Generar un ID aleatorio de seis dígitos
     random_id = f"{random.randint(100000, 999999):06d}"
 
-    # Crear un objeto de inflect engine
-    p = inflect.engine()
-
-    # Convertir el nombre de la tabla a plural
-    plural_table_name = p.plural(table_name.lower())
+    # Usar la función de pluralización personalizada para español
+    plural_table_name = pluralizar(table_name.lower())
 
     return f"{timestamp}{random_id}_create_{plural_table_name}_table.php"
 
@@ -294,11 +291,9 @@ def write_to_file(filename, content, save_path):
     messagebox.showinfo(
         "File Generated", f"File {filename} has been generated at: '{file_path}'")
 
-# New function to generate routes
-
 
 def generate_routes():
-    global table_name  # Añade esta línea para indicar que 'table_name' se trata de una variable global
+    global table_name
     save_path = filedialog.askdirectory()
     if save_path and table_name:
         generate_routes_content(table_name, save_path)
@@ -401,6 +396,7 @@ def load_fields_into_ui(fields):
             CHECKBOX_TICKED if field['mandatory'] else CHECKBOX_UNTICKED
         ))
 
+
 # GUI setup
 app = tk.Tk()
 app.title("CRUD Generator for Laravel")
@@ -446,9 +442,10 @@ generate_model_button.pack(pady=5)
 generate_migration_button = tk.Button(
     app, text="Generate Migration", command=generate_migration_only)
 generate_migration_button.pack(pady=5)
-#rutas
+# rutas
 
-generate_routes_button = tk.Button(app, text="Generate Routes", command=generate_routes)
+generate_routes_button = tk.Button(
+    app, text="Generate Routes", command=generate_routes)
 generate_routes_button.pack(pady=5)
 
 # Add bindings for click to toggle and double-click to edit
