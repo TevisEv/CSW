@@ -57,17 +57,33 @@ def parse_sql_table(sql):
 
 
 def create_crud_files(folder_name):
-    os.makedirs(folder_name, exist_ok=True)
-    file_names = ["editar.blade.php",
-                  "listar.blade.php", "registrar.blade.php"]
+
+    root = tk.Tk()
+    root.withdraw()  
+    base_path = filedialog.askdirectory()  
+
+    if not base_path:
+        messagebox.showerror("Error", "No folder selected.")
+        return  
+
+
+    plural_folder_name = pluralizar(folder_name)
+
+    full_path = os.path.join(base_path, plural_folder_name)
+    
+    os.makedirs(full_path, exist_ok=True)
+    file_names = ["editar.blade.php", "listar.blade.php", "registrar.blade.php"]
+    
     for file_name in file_names:
-        with open(os.path.join(folder_name, file_name), 'w') as f:
+        with open(os.path.join(full_path, file_name), 'w') as f:
             f.write("")  # Crea un archivo vacío
-    messagebox.showinfo(
-        "CRUD Files", f"CRUD files created in '{pluralizar(folder_name)}' directory.")
+
+    messagebox.showinfo("CRUD Files", f"CRUD files created in '{full_path}' directory.")
 
 
-def generate_controller(table_name):
+
+
+def generate_controller(table_name, save_path):
     controller_content = f"""<?php
 
 namespace App\\Http\\Controllers;
@@ -80,12 +96,12 @@ class {table_name.capitalize()}Controller extends Controller
     public function index()
     {{
         ${table_name.lower()}s = {table_name.capitalize()}::all();
-        return view('{table_name.lower()}s.index', compact('{table_name.lower()}s'));
+        return view('{table_name.lower()}s.listar', compact('{table_name.lower()}s'));
     }}
 
     public function create()
     {{
-        return view('{table_name.lower()}s.create');
+        return view('{table_name.lower()}s.registrar');
     }}
 
     public function store(Request $request)
@@ -93,7 +109,7 @@ class {table_name.capitalize()}Controller extends Controller
         ${table_name.lower()} = new {table_name.capitalize()}($request->all());
         ${table_name.lower()}->save();
 
-        return redirect()->route('{table_name.lower()}s.index')->with('success', '{table_name.capitalize()} creado exitosamente');
+        return redirect()->route('{table_name.lower()}s.create')->with('success', '{table_name.capitalize()} creado exitosamente');
     }}
 
     public function show($id)
@@ -105,7 +121,7 @@ class {table_name.capitalize()}Controller extends Controller
     public function edit($id)
     {{
         ${table_name.lower()} = {table_name.capitalize()}::findOrFail($id);
-        return view('{table_name.lower()}s.edit', compact('{table_name.lower()}'));
+        return view('{table_name.lower()}s.editar', compact('{table_name.lower()}'));
     }}
 
     public function update(Request $request, $id)
@@ -125,23 +141,37 @@ class {table_name.capitalize()}Controller extends Controller
     }}
 }}
 """
-    file_path = os.path.join(
-        table_name.lower(), f"{table_name.capitalize()}Controller.php")
+    if not save_path.endswith('/'):
+        save_path += '/'
+    file_path = f"{save_path}{table_name.capitalize()}Controller.php"
     with open(file_path, 'w') as f:
         f.write(controller_content)
-    messagebox.showinfo("Controller Created",
-                        f"Controller created at: '{file_path}'")
-
+    messagebox.showinfo("Controller Created", f"Controller created at: '{file_path}'")
 
 def create_controller(table_name):
     if table_name and table_name != 'unknown':
-        generate_controller(table_name)
+        root = tk.Tk()
+        root.withdraw()  # No queremos una ventana de TK completa, solo el diálogo
+        save_path = filedialog.askdirectory()  # Abre el diálogo para elegir carpeta
+        if save_path:  # Asegurarse de que el usuario no canceló el diálogo
+            generate_controller(table_name, save_path)
+        else:
+            messagebox.showerror("Error", "No folder selected.")
     else:
-        messagebox.showerror(
-            "Error", "No valid table name found from SQL. Please check your SQL statement.")
+        messagebox.showerror("Error", "No valid table name found. Please check your input.")
 
 
-def generate_model(table_name, fields, save_path="output"):
+
+def generate_model(table_name, fields):
+    # Solicita al usuario que seleccione la ruta de guardado
+    root = tk.Tk()
+    root.withdraw()  # No queremos una ventana de TK completa, solo el diálogo
+    save_path = filedialog.askdirectory()  # Abre el diálogo para elegir carpeta
+
+    if not save_path:  # Si el usuario canceló el diálogo
+        messagebox.showerror("Error", "No folder selected.")
+        return  # Sale de la función sin hacer nada más
+
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     fillable = [f"'{field['name']}'" for field in fields if not field.get(
@@ -168,12 +198,12 @@ class {table_name.capitalize()} extends Model
     protected $guarded = [];
 }}
 """
-    # Function to write the content to a file
+    # Escribe el contenido en el archivo en la ruta seleccionada
     file_path = os.path.join(save_path, f'{table_name.capitalize()}.php')
     with open(file_path, 'w') as file:
         file.write(model_content)
-    messagebox.showinfo("Model Generated",
-                        f"Model file generated at: '{file_path}'")
+    messagebox.showinfo("Model Generated", f"Model file generated at: '{file_path}'")
+
 
 
 def sql_to_laravel_type(sql_type):
@@ -302,10 +332,26 @@ def generate_routes():
 def generate_routes_content(table_name, save_path):
     routes_content = f"""<?php
 
-// use App\Http\Controllers\{table_name.capitalize()}Controller;
+use App\Http\Controllers\{table_name.capitalize()}Controller;
+use Illuminate\\Support\\Facades\\Route;
+
 // routes\web.php (ruta para colocar el codigo solo copias y pega en el archivo)
+
+Route::get('/', function () {{
+    return view('welcome');
+}});
+
 Auth::routes();
-Route::get('/{table_name.lower()}', [App\Http\Controllers\{table_name.capitalize()}Controller::class, 'index'])->name('{table_name.lower()}');
+
+Route::get('/home', [App\\Http\\Controllers\\HomeController::class, 'index'])->name('home');
+
+Auth::routes();
+
+Route::get('/home', function() {{
+    return view('home');
+}})->name('home')->middleware('auth');
+
+Route::resource('/{pluralizar(table_name.lower())}', {table_name.capitalize()}Controller::class)->name('home','')->middleware('auth');
 """
     write_to_file('web.php', routes_content, save_path)
 
@@ -425,28 +471,25 @@ for col in fields_table['columns']:
     fields_table.column(col, anchor='center', width=120)
 fields_table.pack(fill='both', expand=True)
 
-# Button to create CRUD files
-create_crud_files_button = tk.Button(
-    app, text="Create CRUD Files", command=lambda: create_crud_files(table_name.lower()))
-create_crud_files_button.pack(pady=5)
+# Nuevo frame para organizar los botones en una sola fila
+buttons_frame = tk.Frame(app)
+buttons_frame.pack(fill='x', padx=10, pady=5)
 
-# New Button to create Controller
-create_controller_button = tk.Button(
-    app, text="Create Controller", command=lambda: create_controller(table_name))
-create_controller_button.pack(pady=5)
-# Add a button for generating the model, assuming table_name and fields are properly populated beforehand
-generate_model_button = tk.Button(
-    app, text="Generate Model", command=lambda: generate_model(table_name, fields))
-generate_model_button.pack(pady=5)
-# boton de migracion
-generate_migration_button = tk.Button(
-    app, text="Generate Migration", command=generate_migration_only)
-generate_migration_button.pack(pady=5)
-# rutas
+# Organiza los botones lado a lado dentro del frame buttons_frame
+create_crud_files_button = tk.Button(buttons_frame, text="Create CRUD Files", command=lambda: create_crud_files(table_name.lower()))
+create_crud_files_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_routes_button = tk.Button(
-    app, text="Generate Routes", command=generate_routes)
-generate_routes_button.pack(pady=5)
+create_controller_button = tk.Button(buttons_frame, text="Create Controller", command=lambda: create_controller(table_name))
+create_controller_button.pack(side='left', fill='x', expand=True, padx=2)
+
+generate_model_button = tk.Button(buttons_frame, text="Generate Model", command=lambda: generate_model(table_name, fields))
+generate_model_button.pack(side='left', fill='x', expand=True, padx=2)
+
+generate_migration_button = tk.Button(buttons_frame, text="Generate Migration", command=generate_migration_only)
+generate_migration_button.pack(side='left', fill='x', expand=True, padx=2)
+
+generate_routes_button = tk.Button(buttons_frame, text="Generate Routes", command=generate_routes)
+generate_routes_button.pack(side='left', fill='x', expand=True, padx=2)
 
 # Add bindings for click to toggle and double-click to edit
 fields_table.bind('<Button-1>', on_field_click)
