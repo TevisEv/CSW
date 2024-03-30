@@ -1,3 +1,4 @@
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 import re
@@ -56,33 +57,131 @@ def parse_sql_table(sql):
     return table_name, fields
 
 
-def create_crud_files(folder_name):
+def generar_fields_html(fields, valores_actuales=None):
+    html = ""
+    for i in range(0, len(fields), 2):
+        html += '    <div class="row">\n'
+        for field in fields[i:i+2]:
+            field_label = field.get("label", field['name'].capitalize())
+            field_placeholder = field.get("placeholder", "")
+            # Comprueba si hay un valor actual para el campo, y si no, usa un valor predeterminado
+            valor_actual = valores_actuales.get(field['name'], 'null') if valores_actuales else 'null'
+            field_valor = f" value='{{{{ old('{field['name']}', {valor_actual}) }}}}'"
+            html += f'        <x-adminlte-input name="{field["name"]}" label="{field_label}" placeholder="{field_placeholder}"\n'
+            html += '                          fgroup-class="form-group col-md-6" disable-feedback'
+            if "type" in field:
+                html += f' type="{field["type"]}"{field_valor}'
+            html += '/>\n'
+        html += '    </div>\n\n'
+    return html
 
+
+def generar_vista_registrar(fields):
+    fields_html = generar_fields_html(fields)
+    return f"""@extends('layouts.app')
+
+@section('content')
+<div class="container">
+    <h2>Registrar</h2>
+    <form method="POST" action="{{{{ route('ruta.store') }}}}">
+        @csrf
+{fields_html}
+        <button type="submit" class="btn btn-primary">Guardar</button>
+    </form>
+</div>
+@endsection
+"""
+
+def generar_vista_listar(fields):
+    columnas = ''.join([f"                <th>{field.get('label', field['name'].capitalize())}</th>\n" for field in fields])
+    fields_data = ''.join([f"                <td>{{{{ item.{field['name']} }}}}</td>\n" for field in fields])
+    return f"""@extends('layouts.app')
+
+@section('content')
+<div class="container">
+    <h2>Listar</h2>
+    <table class="table">
+        <thead>
+            <tr>
+{columnas}                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($items as $item)
+            <tr>
+{fields_data}                <td>
+                    <a href="{{{{ route('ruta.edit', $item->id) }}}}">Editar</a>
+                    <a href="{{{{ route('ruta.destroy', $item->id) }}}}" onclick="return confirm('¿Estás seguro?')">Eliminar</a>
+                </td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+@endsection
+"""
+
+def generar_vista_editar(fields):
+    # Simula valores actuales como un diccionario vacío por ahora
+    valores_actuales = {}  # Este diccionario debería llenarse con los valores actuales de cada campo si están disponibles
+    fields_html = generar_fields_html(fields, valores_actuales)
+    return f"""@extends('layouts.app')
+
+@section('content')
+<div class="container">
+    <h2>Editar</h2>
+    <form method="POST" action="{{{{ route('ruta.update', $item->id) }}}}">
+        @csrf
+        @method('PUT')
+{fields_html}
+        <button type="submit" class="btn btn-primary">Actualizar</button>
+    </form>
+</div>
+@endsection
+"""
+
+
+
+def guardar_vista(nombre_tabla, contenido, nombre_archivo):
+    nombre_carpeta_plural = pluralizar(nombre_tabla)
+    # Ajusta la ruta base según necesites
+    ruta_carpeta = os.path.join(nombre_carpeta_plural)
+
+    # Crear la carpeta si no existe
+    if not os.path.exists(ruta_carpeta):
+        os.makedirs(ruta_carpeta)
+
+    ruta_archivo = os.path.join(ruta_carpeta, nombre_archivo)
+    with open(ruta_archivo, 'w') as archivo:
+        archivo.write(contenido)
+    print(f"Archivo {nombre_archivo} guardado en {ruta_carpeta}/")
+
+
+def generar_y_guardar_vistas(nombre_tabla, fields):
+    # Generar contenido de las vistas
+    contenido_registrar = generar_vista_registrar(fields)
+    contenido_listar = generar_vista_listar(fields)
+    contenido_editar = generar_vista_editar(fields)
+
+    # Guardar las vistas
+    guardar_vista(nombre_tabla, contenido_registrar, "registrar.blade.php")
+    guardar_vista(nombre_tabla, contenido_listar, "listar.blade.php")
+    guardar_vista(nombre_tabla, contenido_editar, "editar.blade.php")
+
+def request_directory_and_create_files(table_name, fields):
+    # Solicitar al usuario que seleccione el directorio donde guardar los archivos
     root = tk.Tk()
-    root.withdraw()  
-    base_path = filedialog.askdirectory()  
-
-    if not base_path:
+    root.withdraw()  # No queremos una ventana de TK completa, solo el diálogo
+    save_path = filedialog.askdirectory()  # Abre el diálogo para elegir carpeta
+    if not save_path:  # Si el usuario cancela la selección
         messagebox.showerror("Error", "No folder selected.")
-        return  
+        return
 
+    # Generar y guardar las vistas HTML para el CRUD
+    generar_y_guardar_vistas(table_name, fields)
 
-    plural_folder_name = pluralizar(folder_name)
-
-    full_path = os.path.join(base_path, plural_folder_name)
+    messagebox.showinfo("Success", "CRUD files generated successfully.")
     
-    os.makedirs(full_path, exist_ok=True)
-    file_names = ["editar.blade.php", "listar.blade.php", "registrar.blade.php"]
-    
-    for file_name in file_names:
-        with open(os.path.join(full_path, file_name), 'w') as f:
-            f.write("")  # Crea un archivo vacío
-
-    messagebox.showinfo("CRUD Files", f"CRUD files created in '{full_path}' directory.")
-
-
-
-
 def generate_controller(table_name, save_path):
     controller_content = f"""<?php
 
@@ -146,7 +245,9 @@ class {table_name.capitalize()}Controller extends Controller
     file_path = f"{save_path}{table_name.capitalize()}Controller.php"
     with open(file_path, 'w') as f:
         f.write(controller_content)
-    messagebox.showinfo("Controller Created", f"Controller created at: '{file_path}'")
+    messagebox.showinfo("Controller Created",
+                        f"Controller created at: '{file_path}'")
+
 
 def create_controller(table_name):
     if table_name and table_name != 'unknown':
@@ -158,8 +259,8 @@ def create_controller(table_name):
         else:
             messagebox.showerror("Error", "No folder selected.")
     else:
-        messagebox.showerror("Error", "No valid table name found. Please check your input.")
-
+        messagebox.showerror(
+            "Error", "No valid table name found. Please check your input.")
 
 
 def generate_model(table_name, fields):
@@ -202,8 +303,8 @@ class {table_name.capitalize()} extends Model
     file_path = os.path.join(save_path, f'{table_name.capitalize()}.php')
     with open(file_path, 'w') as file:
         file.write(model_content)
-    messagebox.showinfo("Model Generated", f"Model file generated at: '{file_path}'")
-
+    messagebox.showinfo("Model Generated",
+                        f"Model file generated at: '{file_path}'")
 
 
 def sql_to_laravel_type(sql_type):
@@ -476,19 +577,25 @@ buttons_frame = tk.Frame(app)
 buttons_frame.pack(fill='x', padx=10, pady=5)
 
 # Organiza los botones lado a lado dentro del frame buttons_frame
-create_crud_files_button = tk.Button(buttons_frame, text="Create CRUD Files", command=lambda: create_crud_files(table_name.lower()))
+create_crud_files_button = tk.Button(buttons_frame, text="Create CRUD Files",
+                                     command=lambda: request_directory_and_create_files(table_name.lower(), fields))
 create_crud_files_button.pack(side='left', fill='x', expand=True, padx=2)
 
-create_controller_button = tk.Button(buttons_frame, text="Create Controller", command=lambda: create_controller(table_name))
+
+create_controller_button = tk.Button(
+    buttons_frame, text="Create Controller", command=lambda: create_controller(table_name))
 create_controller_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_model_button = tk.Button(buttons_frame, text="Generate Model", command=lambda: generate_model(table_name, fields))
+generate_model_button = tk.Button(
+    buttons_frame, text="Generate Model", command=lambda: generate_model(table_name, fields))
 generate_model_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_migration_button = tk.Button(buttons_frame, text="Generate Migration", command=generate_migration_only)
+generate_migration_button = tk.Button(
+    buttons_frame, text="Generate Migration", command=generate_migration_only)
 generate_migration_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_routes_button = tk.Button(buttons_frame, text="Generate Routes", command=generate_routes)
+generate_routes_button = tk.Button(
+    buttons_frame, text="Generate Routes", command=generate_routes)
 generate_routes_button.pack(side='left', fill='x', expand=True, padx=2)
 
 # Add bindings for click to toggle and double-click to edit
