@@ -112,8 +112,12 @@ def generar_vista_listar(fields, table_name):
             @foreach(${table_name_plural} as ${table_name})
             <tr>
 {fields_data}                <td>
-                    <a href="{{{{ route('{table_name_plural}.edit', ${table_name}->id) }}}}">Editar</a>
-                    <a href="{{{{ route('{table_name_plural}.destroy', ${table_name}->id) }}}}" onclick="return confirm('¿Estás seguro?')">Eliminar</a>
+                    <a href="{{{{ route('{table_name_plural}.edit', ${table_name}->id) }}}}" class="btn btn-xs btn-primary">Editar</a>
+                    <form action="{{{{ route('{table_name_plural}.destroy', ${table_name}->id) }}}}" method="POST" style="display: inline-block;">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-xs btn-danger">Eliminar</button>
+                    </form>
                 </td>
             </tr>
             @endforeach
@@ -122,6 +126,7 @@ def generar_vista_listar(fields, table_name):
 </div>
 @endsection
 """
+
 
 
 def generar_vista_editar(fields,table_name):
