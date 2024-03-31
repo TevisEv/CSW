@@ -11,7 +11,6 @@ import random
 CHECKBOX_TICKED = "☑"
 CHECKBOX_UNTICKED = "☐"
 
-
 def pluralizar(palabra):
     if palabra.endswith(('a', 'e', 'i', 'o', 'u')):
         return palabra + 's'
