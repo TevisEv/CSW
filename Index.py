@@ -659,7 +659,7 @@ buttons_frame = tk.Frame(app)
 buttons_frame.pack(fill='x', padx=10, pady=5)
 
 # Organiza los botones lado a lado dentro del frame buttons_frame
-create_crud_files_button = ttk.Button(buttons_frame, text="Create CRUD Files", command=lambda: request_directory_and_create_files(table_name.lower(), fields), style='Button2.TButton')
+create_crud_files_button = ttk.Button(buttons_frame, text="Create CRUD Files", command=lambda: request_directory_and_create_files(table_name.lower()), style='Button2.TButton')
 create_crud_files_button.pack(side='left', fill='x', expand=True, padx=2)
 
 create_controller_button = ttk.Button(buttons_frame, text="Create Controller", command=lambda: create_controller(table_name), style='Button3.TButton')
