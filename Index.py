@@ -56,99 +56,178 @@ def parse_sql_table(sql):
 
     return table_name, fields
 
+def sql_to_html_input_type(sql_type):
+
+    mapping = {
+        'varchar': 'text',
+        'int': 'number',
+        'bigint': 'number',
+        'float': 'number',
+        'double': 'number',
+        'decimal': 'number',
+        'date': 'date',
+        'datetime': 'datetime-local',
+        'timestamp': 'datetime-local',
+        'boolean': 'checkbox',  # Este requerirá lógica especial si se usa
+    }
+    return mapping.get(sql_type.lower(), 'text')
 
 def generar_fields_html(fields, valores_actuales=None):
     html = ""
-    for i in range(0, len(fields), 2):
-        html += '    <div class="row">\n'
+    for i in range(0, len(fields), 2):  # Dividir los campos en pasos de dos
+        html += '    <div class="row">\n'  # Abrir un nuevo div row
+        # Iterar a través del par actual de campos (o solo uno si es el último y es impar)
         for field in fields[i:i+2]:
             field_label = field.get("label", field['name'].capitalize())
-            field_placeholder = field.get("placeholder", "")
-            # Comprueba si hay un valor actual para el campo, y si no, usa un valor predeterminado
-            valor_actual = valores_actuales.get(field['name'], 'null') if valores_actuales else 'null'
-            field_valor = f" value='{{{{ old('{field['name']}', {valor_actual}) }}}}'"
-            html += f'        <x-adminlte-input name="{field["name"]}" label="{field_label}" placeholder="{field_placeholder}"\n'
-            html += '                          fgroup-class="form-group col-md-6" disable-feedback'
-            if "type" in field:
-                html += f' type="{field["type"]}"{field_valor}'
-            html += '/>\n'
-        html += '    </div>\n\n'
+            field_placeholder = field.get(
+                "placeholder", field['name'].capitalize())
+            html_input_type = sql_to_html_input_type(field["type"])
+
+            # Manejar valores pre-populados si se proporcionan
+            current_value = valores_actuales.get(
+                field["name"], "") if valores_actuales else ""
+
+            # Agregar el atributo 'value' a la etiqueta de entrada si se proporciona current_value
+            if current_value:
+                html += f'        <x-adminlte-input name="{field["name"]}" label="{field_label}" placeholder="{field_placeholder}" value="{current_value}" fgroup-class="col-md-6" disable-feedback type="{html_input_type}"/>\n'
+            else:
+                html += f'        <x-adminlte-input name="{field["name"]}" label="{field_label}" placeholder="{field_placeholder}" fgroup-class="col-md-6" disable-feedback type="{html_input_type}"/>\n'
+        html += '    </div>\n'  # Cerrar el div row
+
     return html
 
-
-def generar_vista_registrar(fields,table_name):
+def generar_vista_registrar(fields, table_name):
     fields_html = generar_fields_html(fields)
-    return f"""@extends('layouts.app')
-
-@section('title', 'Registrar Cliente')
-@section('content')
-<div class="container">
-    <h2>Registrar</h2>
-    <form method="POST" action="{{{{ route('{pluralizar(table_name)}.store') }}}}">
-        @csrf
-{fields_html}
-        <button type="submit" class="btn btn-primary">Guardar</button>
-    </form>
-</div>
-@endsection
-"""
-
-def generar_vista_listar(fields, table_name):
-    columnas = ''.join([f"                <th>{field.get('label', field['name'].capitalize())}</th>\n" for field in fields])
-    fields_data = ''.join([f"                <td>{{{{ ${table_name}->{field['name']} }}}}</td>\n" for field in fields])
-    table_name_plural = pluralizar(table_name)  # Make sure pluralizar is corrected to handle your specific pluralization rules correctly.
     return f"""@extends('adminlte::page')
-@section('title', 'Listar de {table_name.capitalize()}')
+
+@section('title', 'Registrar {table_name.capitalize()}')
+
+@section('content_header')
+    <h1 class="m-0 text-dark">Registrar {table_name.capitalize()}</h1>
+@stop
+
 @section('content')
-<div class="container">
-    <h2>Listar</h2>
-    <table class="table">
-        <thead>  
-            <tr>
-{columnas}                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach(${table_name_plural} as ${table_name})
-            <tr>
-{fields_data}                <td>
-                    <a href="{{{{ route('{table_name_plural}.edit', ${table_name}->id) }}}}" class="btn btn-xs btn-primary">Editar</a>
-                    <form action="{{{{ route('{table_name_plural}.destroy', ${table_name}->id) }}}}" method="POST" style="display: inline-block;">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-xs btn-danger">Eliminar</button>
-                    </form>
-                </td>
-            </tr>
+@if ($errors->any())
+    <div class="alert alert-danger">
+        <strong>Error</strong> Hubo problemas con los datos ingresados<br><br>
+        <ul>
+            @foreach ($errors->all() as $error)
+                <li>{{{{
+{'$error'} }}}}</li>
             @endforeach
-        </tbody>
-    </table>
-</div>
-@endsection
+        </ul>
+    </div>
+@endif
+
+@if(session('success'))
+    <div class="alert alert-success mt-2">
+        <strong>{{{{ Session::get('success') }}}}</strong>
+    </div>
+@endif
+
+<form action="{{{{ route('{pluralizar(table_name)}.store') }}}}" method="POST" autocomplete="off">
+    @csrf
+{fields_html}
+
+    <x-adminlte-button class="btn-flat" type="submit" label="Registrar" theme="success" icon="fas fa-lg fa-save"/>
+</form>
+@stop
 """
 
+def generar_vista_listar(fields, table_name, mandatory_fields):
+    columnas = ''.join(
+        [f"                <th>{field.get('label', field['name'].capitalize())}</th>\n" for field in fields if field['name'] in mandatory_fields])
+    fields_data = ''.join(
+        [f"                <td>{{{{ ${table_name}->{field['name']} }}}}</td>\n" for field in fields if field['name'] in mandatory_fields])
+    # Asegúrate de que pluralizar maneje tus reglas de pluralización específicas correctamente.
+    table_name_plural = pluralizar(table_name)
+    return f"""
+@extends('adminlte::page')
+@section('title', 'Listado de {table_name.capitalize()}')
 
-
-def generar_vista_editar(fields,table_name):
-    # Simula valores actuales como un diccionario vacío por ahora
-    valores_actuales = {}  # Este diccionario debería llenarse con los valores actuales de cada campo si están disponibles
-    fields_html = generar_fields_html(fields, valores_actuales)
-    return f"""@extends('layouts.app')
+@section('content_header')
+    <h1 class="m-0 text-dark">Listado de {table_name_plural.capitalize()}</h1>
+@stop
 
 @section('content')
-<div class="container">
-    <h2>Editar</h2>
-    <form method="POST" action="{{{{ route('{pluralizar(table_name)}.update', $item->id) }}}}">
-        @csrf
-        @method('PUT')
-{fields_html}
-        <button type="submit" class="btn btn-primary">Actualizar</button>
-    </form>
-</div>
-@endsection
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">{table_name_plural.capitalize()} Registrados</h3>
+        </div>
+        <!-- /.card-header -->
+        <div class="card-body">
+            <table id="{table_name_plural}" class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+{columnas}                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (${table_name_plural} as ${table_name})
+                        <tr>
+{fields_data}                            <td>
+                                <a href="{{{{ route('{table_name_plural}.edit', ${table_name}->id) }}}}" class="btn btn-xs btn-primary">Editar</a>
+                                <form action="{{{{ route('{table_name_plural}.destroy', ${table_name}->id) }}}}" method="POST" style="display: inline-block;">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-xs btn-danger">Eliminar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        <!-- /.card-body -->
+    </div>
+    <!-- /.card -->
+    <div>
+       {{{{ ${table_name_plural}->links() }}}}
+    </div>
+@stop
 """
 
+def generar_vista_editar(fields, table_name):
+    # Simula valores actuales como un diccionario vacío por ahora
+    # Este diccionario debería llenarse con los valores actuales de cada campo si están disponibles
+    valores_actuales = {}
+    fields_html = generar_fields_html(fields, valores_actuales)
+    table_name_plural = pluralizar(table_name)
+    return f"""@extends('adminlte::page')
 
+@section('title', 'Editar {table_name.capitalize()}')
+
+@section('content_header')
+    <h1 class="m-0 text-dark">Editar {table_name.capitalize()}</h1>
+@stop
+
+@section('content')
+@if ($errors->any())
+    <div class="alert alert-danger">
+        <strong>Error</strong> Hubo problemas con los datos ingresados<br><br>
+        <ul>
+            @foreach ($errors->all() as $error)
+                <li>{{{{ $error }}}}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+@if(session('success'))
+    <div class="alert alert-success mt-2">
+        <strong>{{{{ session('success') }}}}</strong>
+    </div>
+@endif
+
+<form action="{{{{ route('{table_name_plural}.update', ${table_name}->id) }}}}" method="POST" autocomplete="off">
+    @csrf
+    @method('PUT')
+{fields_html}
+
+    <x-adminlte-button class="btn-flat" type="submit" label="Actualizar" theme="success" icon="fas fa-lg fa-save"/>
+</form>
+@stop
+"""
 
 def guardar_vista(table_name, contenido, nombre_archivo):
     nombre_carpeta_plural = pluralizar(table_name)
@@ -164,11 +243,13 @@ def guardar_vista(table_name, contenido, nombre_archivo):
         archivo.write(contenido)
     print(f"Archivo {nombre_archivo} guardado en {ruta_carpeta}/")
 
-
 def generar_y_guardar_vistas(table_name, fields):
+    # Identificar los campos marcados como obligatorios
+    mandatory_fields = [field['name'] for field in fields if field.get('mandatory', False)]
+
     # Generar contenido de las vistas
-    contenido_registrar = generar_vista_registrar(fields, table_name)  # Assuming you update generar_vista_registrar to accept table_name
-    contenido_listar = generar_vista_listar(fields, table_name)
+    contenido_registrar = generar_vista_registrar(fields, table_name)
+    contenido_listar = generar_vista_listar(fields, table_name, mandatory_fields)
     contenido_editar = generar_vista_editar(fields, table_name)
 
     # Guardar las vistas
@@ -189,7 +270,7 @@ def request_directory_and_create_files(table_name, fields):
     generar_y_guardar_vistas(table_name, fields)
 
     messagebox.showinfo("Success", "CRUD files generated successfully.")
-    
+
 def generate_controller(table_name, save_path):
     controller_content = f"""<?php
 
@@ -256,7 +337,6 @@ class {table_name.capitalize()}Controller extends Controller
     messagebox.showinfo("Controller Created",
                         f"Controller created at: '{file_path}'")
 
-
 def create_controller(table_name):
     if table_name and table_name != 'unknown':
         root = tk.Tk()
@@ -269,7 +349,6 @@ def create_controller(table_name):
     else:
         messagebox.showerror(
             "Error", "No valid table name found. Please check your input.")
-
 
 def generate_model(table_name, fields):
     # Solicita al usuario que seleccione la ruta de guardado
@@ -314,7 +393,6 @@ class {table_name.capitalize()} extends Model
     messagebox.showinfo("Model Generated",
                         f"Model file generated at: '{file_path}'")
 
-
 def sql_to_laravel_type(sql_type):
     type_mapping = {
         'varchar': 'string',
@@ -336,7 +414,6 @@ def sql_to_laravel_type(sql_type):
             return laravel_type, None, None
     else:
         return 'string', None, None
-
 
 def generate_migration_from_sql(sql_schema, save_path=None):
     lines = sql_schema.strip().split('\n')
@@ -394,7 +471,6 @@ class Create{pluralizar(table_name.capitalize())}Table extends Migration
 """
     return migration_content
 
-
 def generate_migration_filename(table_name):
     # Obtener la fecha y hora actuales con el formato de Laravel para nombres de archivos de migración
     timestamp = datetime.datetime.now().strftime('%Y_%m_%d_')
@@ -405,7 +481,6 @@ def generate_migration_filename(table_name):
     plural_table_name = pluralizar(table_name.lower())
 
     return f"{timestamp}{random_id}_create_{plural_table_name}_table.php"
-
 
 def generate_migration_only():
     save_path = filedialog.askdirectory()
@@ -422,7 +497,6 @@ def generate_migration_only():
         messagebox.showinfo(
             "Migration Generated", f"Migration file has been generated at: '{file_path}'")
 
-
 def write_to_file(filename, content, save_path):
     file_path = os.path.join(save_path, filename)
     with open(file_path, 'w') as file:
@@ -430,13 +504,11 @@ def write_to_file(filename, content, save_path):
     messagebox.showinfo(
         "File Generated", f"File {filename} has been generated at: '{file_path}'")
 
-
 def generate_routes():
     global table_name
     save_path = filedialog.askdirectory()
     if save_path and table_name:
         generate_routes_content(table_name, save_path)
-
 
 def generate_routes_content(table_name, save_path):
     routes_content = f"""<?php
@@ -464,13 +536,11 @@ Route::resource('/{pluralizar(table_name.lower())}', {table_name.capitalize()}Co
 """
     write_to_file('web.php', routes_content, save_path)
 
-
 def toggle_value(item, index, values_list):
     item_list = list(item)
     current_value = item_list[index]
     item_list[index] = values_list[1] if current_value == values_list[0] else values_list[0]
     return item_list
-
 
 def on_field_click(event):
     region = fields_table.identify_region(event.x, event.y)
@@ -487,7 +557,6 @@ def on_field_click(event):
     elif region == 'heading':
         return "break"
 
-
 def update_field_data(row_id, col_index, value):
     field_name = fields_table.item(row_id, 'values')[0]
     field_info = next(
@@ -499,7 +568,6 @@ def update_field_data(row_id, col_index, value):
             field_info['nullable'] = (value == CHECKBOX_TICKED)
         elif col_index == 5:
             field_info['mandatory'] = (value == CHECKBOX_TICKED)
-
 
 def edit_field_details(event):
     region = fields_table.identify_region(event.x, event.y)
@@ -519,7 +587,6 @@ def edit_field_details(event):
             fields_table.item(row_id, values=item_list)
             update_field_data_type_size(row_id, col_num, new_value)
 
-
 def update_field_data_type_size(row_id, col_num, value):
     field_name = fields_table.item(row_id, 'values')[0]
     field_info = next(
@@ -530,13 +597,11 @@ def update_field_data_type_size(row_id, col_num, value):
         elif col_num == 2:  # Size
             field_info['size'] = value
 
-
 def process_sql_and_update():
     sql = sql_input_text.get("1.0", tk.END)
     global table_name, fields
     table_name, fields = parse_sql_table(sql)
     load_fields_into_ui(fields)
-
 
 def load_fields_into_ui(fields):
     for i in fields_table.get_children():
@@ -552,9 +617,19 @@ def load_fields_into_ui(fields):
         ))
 
 
+
 # GUI setup
 app = tk.Tk()
 app.title("CRUD Generator for Laravel")
+
+# Definir los estilos para los botones con colores personalizados
+style = ttk.Style()
+style.configure('Pastel.TButton', borderwidth=0, width=20)
+
+style.configure('Button1.TButton', background='#47E72E')  
+style.configure('Button2.TButton', background='#87CEEB') 
+style.configure('Button3.TButton', background='#87CEEB')  
+style.configure('Button4.TButton', background='#FFD700')  
 
 # SQL input area
 sql_input_frame = tk.Frame(app)
@@ -565,8 +640,7 @@ sql_input_text = tk.Text(sql_input_frame, height=10)
 sql_input_text.pack(side='left', fill='x', expand=True)
 
 # Button to process SQL input
-process_button = tk.Button(app, text="Process SQL",
-                           command=process_sql_and_update)
+process_button = ttk.Button(app, text="Process SQL", command=process_sql_and_update, style='Button1.TButton')
 process_button.pack(pady=5)
 
 # Table to display detected fields
@@ -585,25 +659,19 @@ buttons_frame = tk.Frame(app)
 buttons_frame.pack(fill='x', padx=10, pady=5)
 
 # Organiza los botones lado a lado dentro del frame buttons_frame
-create_crud_files_button = tk.Button(buttons_frame, text="Create CRUD Files",
-                                     command=lambda: request_directory_and_create_files(table_name.lower(), fields))
+create_crud_files_button = ttk.Button(buttons_frame, text="Create CRUD Files", command=lambda: request_directory_and_create_files(table_name.lower()), style='Button2.TButton')
 create_crud_files_button.pack(side='left', fill='x', expand=True, padx=2)
 
-
-create_controller_button = tk.Button(
-    buttons_frame, text="Create Controller", command=lambda: create_controller(table_name))
+create_controller_button = ttk.Button(buttons_frame, text="Create Controller", command=lambda: create_controller(table_name), style='Button3.TButton')
 create_controller_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_model_button = tk.Button(
-    buttons_frame, text="Generate Model", command=lambda: generate_model(table_name, fields))
+generate_model_button = ttk.Button(buttons_frame, text="Generate Model", command=lambda: generate_model(table_name, fields), style='Button4.TButton')
 generate_model_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_migration_button = tk.Button(
-    buttons_frame, text="Generate Migration", command=generate_migration_only)
+generate_migration_button = ttk.Button(buttons_frame, text="Generate Migration", command=generate_migration_only, style='Button4.TButton')
 generate_migration_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_routes_button = tk.Button(
-    buttons_frame, text="Generate Routes", command=generate_routes)
+generate_routes_button = ttk.Button(buttons_frame, text="Generate Routes", command=generate_routes, style='Button4.TButton')
 generate_routes_button.pack(side='left', fill='x', expand=True, padx=2)
 
 # Add bindings for click to toggle and double-click to edit
