@@ -9,5 +9,8 @@ SUCCESS: Se espera recibir un OK o un estatus code 200
 --PRUEBAS UNITARIAS--
 .\vendor\bin\phpunit.bat
 
+Como esto agarra todo los archivos de test no se puede controlar todo lo que se corre.
+Por ello se sugiere realizar la prueba unitaria por funcion especifica.
+
 --PRUEBAS UNITARIAS DE UNA FUNCION ESPECIFICA--
 .\vendor\bin\phpunit.bat --filter test_store_client_invalid_NRODOCUMENTO_return_404
