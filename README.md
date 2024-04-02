@@ -6,7 +6,7 @@
 - `HORNA CERNA DAYANA ESTEFANY`
 - `HURTADO MILIAN JEAN HARLEY`
 - `DURAND PALACIOS ABIGAIL`
-
+     
 
 # Documentación del Generador de CRUD para Laravel
 
