@@ -1,4 +1,3 @@
-
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 import re
@@ -6,6 +5,13 @@ import os
 import datetime
 import inflect
 import random
+
+
+class SQLParsingError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
 
 # Definición de las constantes para las casillas de verificación
 CHECKBOX_TICKED = "☑"
@@ -26,9 +32,16 @@ def pluralizar(palabra):
 
 
 def parse_sql_table(sql):
+    if not sql.strip():  # Verificar si el SQL está vacío
+        raise SQLParsingError("Rellene el sql porfavor")
+
     table_pattern = re.compile(r"CREATE TABLE (\w+)", re.IGNORECASE)
     table_match = table_pattern.search(sql)
-    table_name = table_match.group(1) if table_match else 'unknown'
+    if not table_match:  # Verificar si se encuentra el nombre de la tabla
+        raise SQLParsingError("Table name not found")
+
+    table_name = table_match.group(1)
+
     field_pattern = re.compile(
         r"(\w+)\s+(\w+)(\(\d+(,\d+)?\))?\s*(NOT NULL)?", re.IGNORECASE)
     pk_pattern = re.compile(r"PRIMARY KEY\s*\((.*?)\)", re.IGNORECASE)
@@ -56,6 +69,7 @@ def parse_sql_table(sql):
 
     return table_name, fields
 
+
 def sql_to_html_input_type(sql_type):
 
     mapping = {
@@ -72,29 +86,31 @@ def sql_to_html_input_type(sql_type):
     }
     return mapping.get(sql_type.lower(), 'text')
 
-def generar_fields_html(fields, valores_actuales=None):
+
+def generar_fields_html(fields, valores_actuales=None, editable=True):
     html = ""
-    for i in range(0, len(fields), 2):  # Dividir los campos en pasos de dos
-        html += '    <div class="row">\n'  # Abrir un nuevo div row
-        # Iterar a través del par actual de campos (o solo uno si es el último y es impar)
-        for field in fields[i:i+2]:
-            field_label = field.get("label", field['name'].capitalize())
-            field_placeholder = field.get(
-                "placeholder", field['name'].capitalize())
-            html_input_type = sql_to_html_input_type(field["type"])
+    for i in range(0, len(fields), 2):  # Iterar a través de los campos dos a dos
+        html += '<div class="row">\n'
+        for j in range(2):  # Dentro de cada fila, crear hasta dos columnas
+            if i + j < len(fields):
+                field = fields[i + j]
+                # Asegurar que el nombre del campo esté en mayúsculas para la generación del HTML
+                field_name_upper = field['name'].upper()
+                field_label = field.get("label", field_name_upper).capitalize()
+                html_input_type = sql_to_html_input_type(field["type"])
+                # Asegurar que se usen nombres de propiedades en mayúsculas para los valores actuales
+                current_value = valores_actuales.get(
+                    field_name_upper, "") if valores_actuales else ""
+                disabled_attr = " disabled" if not editable else ""
 
-            # Manejar valores pre-populados si se proporcionan
-            current_value = valores_actuales.get(
-                field["name"], "") if valores_actuales else ""
+                # Construir el atributo 'value' utilizando la sintaxis de Blade y el nombre de la tabla en minúscula
+                value_attr = f' value="{{{{ ${valores_actuales.get("object_name", "objeto").lower()}->{field["name"]} }}}}"' if current_value else ""
 
-            # Agregar el atributo 'value' a la etiqueta de entrada si se proporciona current_value
-            if current_value:
-                html += f'        <x-adminlte-input name="{field["name"]}" label="{field_label}" placeholder="{field_placeholder}" value="{current_value}" fgroup-class="col-md-6" disable-feedback type="{html_input_type}"/>\n'
-            else:
-                html += f'        <x-adminlte-input name="{field["name"]}" label="{field_label}" placeholder="{field_placeholder}" fgroup-class="col-md-6" disable-feedback type="{html_input_type}"/>\n'
-        html += '    </div>\n'  # Cerrar el div row
-
+                # Insertar el atributo 'value' entre 'disable-feedback' y 'type'
+                html += f'    <x-adminlte-input name="{field_name_upper}" label="{field_label}" placeholder="{field_label}" fgroup-class="col-md-6" disable-feedback{value_attr} type="{html_input_type}"{disabled_attr} />\n'
+        html += '</div>\n'
     return html
+
 
 def generar_vista_registrar(fields, table_name):
     fields_html = generar_fields_html(fields)
@@ -134,9 +150,12 @@ def generar_vista_registrar(fields, table_name):
 @stop
 """
 
+
 def generar_vista_listar(fields, table_name, mandatory_fields, primary_key):
-    columnas = ''.join([f"                <th>{field.get('label', field['name'].capitalize())}</th>\n" for field in fields if field['name'] in mandatory_fields])
-    fields_data = ''.join([f"                <td>{{{{ ${table_name}->{field['name']} }}}}</td>\n" for field in fields if field['name'] in mandatory_fields])
+    columnas = ''.join(
+        [f"                <th>{field.get('label', field['name'].capitalize())}</th>\n" for field in fields if field['name'] in mandatory_fields])
+    fields_data = ''.join(
+        [f"                <td>{{{{ ${table_name}->{field['name']} }}}}</td>\n" for field in fields if field['name'] in mandatory_fields])
     table_name_plural = pluralizar(table_name)
     return f"""
 @extends('adminlte::page')
@@ -184,9 +203,15 @@ def generar_vista_listar(fields, table_name, mandatory_fields, primary_key):
 @stop
 """
 
+
 def generar_vista_editar(fields, table_name, primary_key):
-    valores_actuales = {}
-    fields_html = generar_fields_html(fields, valores_actuales)
+    # Asegurar que los nombres de las variables en `valores_actuales` estén en mayúsculas
+    valores_actuales = {field['name'].upper(
+    ): f"{{${{table_name.lower()}}->{field['name']}}}" for field in fields}
+
+    # Usar el nombre del objeto en minúsculas para mantener consistencia con la instancia del modelo
+    valores_actuales["object_name"] = table_name.lower()
+    fields_html = generar_fields_html(fields, valores_actuales, editable=False)
     table_name_plural = pluralizar(table_name)
     return f"""@extends('adminlte::page')
 
@@ -224,6 +249,7 @@ def generar_vista_editar(fields, table_name, primary_key):
 @stop
 """
 
+
 def guardar_vista(table_name, contenido, nombre_archivo):
     nombre_carpeta_plural = pluralizar(table_name)
     # Ajusta la ruta base según necesites
@@ -238,16 +264,20 @@ def guardar_vista(table_name, contenido, nombre_archivo):
         archivo.write(contenido)
     print(f"Archivo {nombre_archivo} guardado en {ruta_carpeta}/")
 
+
 def generar_y_guardar_vistas(table_name, fields):
     # Identificar los campos marcados como obligatorios
-    mandatory_fields = [field['name'] for field in fields if field.get('mandatory', False)]
-    
+    mandatory_fields = [field['name']
+                        for field in fields if field.get('mandatory', False)]
+
     # Identificar la clave primaria
-    primary_key = next((field['name'] for field in fields if field.get('primary_key', False)), 'id')
+    primary_key = next(
+        (field['name'] for field in fields if field.get('primary_key', False)), 'id')
 
     # Generar contenido de las vistas
     contenido_registrar = generar_vista_registrar(fields, table_name)
-    contenido_listar = generar_vista_listar(fields, table_name, mandatory_fields, primary_key)
+    contenido_listar = generar_vista_listar(
+        fields, table_name, mandatory_fields, primary_key)
     contenido_editar = generar_vista_editar(fields, table_name, primary_key)
 
     # Guardar las vistas
@@ -270,6 +300,7 @@ def request_directory_and_create_files(table_name, fields):
 
     messagebox.showinfo("Success", "CRUD files generated successfully.")
 
+
 def sql_to_laravel_type(sql_type):
     type_mapping = {
         'varchar': 'string',
@@ -291,37 +322,46 @@ def sql_to_laravel_type(sql_type):
             return laravel_type, None, None
     else:
         return 'string', None, None
-    
+
+
 def sql_to_laravel_type(sql_type):
     type_mapping = {
-        'varchar': ('string', True),  # True indica que soporta especificación de tamaño
+        # True indica que soporta especificación de tamaño
+        'varchar': ('string', True),
         'integer': ('integer', False),
         'smallint': ('smallInteger', False),
         'numeric': ('numeric', True),
         'date': ('date', False)
     }
-    match = re.match(r"(\w+)(?:\((\d+)(?:,(\d+))?\))?", sql_type, re.IGNORECASE)
+    match = re.match(r"(\w+)(?:\((\d+)(?:,(\d+))?\))?",
+                     sql_type, re.IGNORECASE)
     if match:
         sql_data_type, size, decimal_places = match.groups()
-        laravel_type, supports_size = type_mapping.get(sql_data_type.lower(), ('string', True))
+        laravel_type, supports_size = type_mapping.get(
+            sql_data_type.lower(), ('string', True))
         return laravel_type, size if supports_size else None, decimal_places
     else:
         return 'string', None, None
 
+
 def generate_controller(table_name, fields, save_path):
     # Encontrar el nombre de la clave primaria
-    primary_key = next((field['name'] for field in fields if field.get('primary_key', False)), 'id')
-    
+    primary_key = next(
+        (field['name'] for field in fields if field.get('primary_key', False)), 'id')
+
     validation_rules = []
     for field in fields:
+        # Determinar si el campo es obligatorio o no basado en 'mandatory'
+        validation_type = 'required' if field.get(
+            'mandatory', False) else 'nullable'
         size = field.get('size')
         laravel_type = 'string'  # Este ejemplo siempre usa string, ajusta según sea necesario
-        rule = f"'{field['name']}' => 'required|{laravel_type}"
+        rule = f"'{field['name']}' => '{validation_type}|{laravel_type}"
         if size:
             rule += f"|max:{size}"
         rule += "'"
         validation_rules.append(rule)
-    
+
     validation_rules_str = ",\n        ".join(validation_rules)
 
     controller_content = f"""<?php
@@ -386,7 +426,6 @@ class {table_name.capitalize()}Controller extends Controller
     file_path = f"{save_path}{table_name.capitalize()}Controller.php"
     with open(file_path, 'w') as f:
         f.write(controller_content)
-    # Ya no se necesita el print, porque vamos a mostrar un cuadro de diálogo
     return file_path  # Devuelve la ruta del archivo para mostrarla en el cuadro de diálogo
 
 
@@ -396,12 +435,16 @@ def create_controller(table_name, fields):
         root.withdraw()  # No queremos una ventana de TK completa, solo el diálogo
         save_path = filedialog.askdirectory()  # Abre el diálogo para elegir carpeta
         if save_path:  # Asegurarse de que el usuario no canceló el diálogo
-            controller_path = generate_controller(table_name, fields, save_path)
-            messagebox.showinfo("Controller Generated", f"Controller file has been generated at: '{controller_path}'")
+            controller_path = generate_controller(
+                table_name, fields, save_path)
+            messagebox.showinfo(
+                "Controller Generated", f"Controller file has been generated at: '{controller_path}'")
         else:
             messagebox.showerror("Error", "No folder selected.")
     else:
-        messagebox.showerror("Error", "No valid table name found. Please check your input.")
+        messagebox.showerror(
+            "Error", "No valid table name found. Please check your input.")
+
 
 def generate_model(table_name, fields):
     # Inicializa la ventana de Tkinter
@@ -416,14 +459,16 @@ def generate_model(table_name, fields):
         return
 
     # Encuentra el campo clave primaria
-    primary_key_field = next((field for field in fields if field.get('primary_key', False)), None)
+    primary_key_field = next(
+        (field for field in fields if field.get('primary_key', False)), None)
     primary_key = primary_key_field['name'] if primary_key_field else 'id'
 
     # Asegura que la clave primaria sea el primer elemento en `fillable` si no es 'id'
     fillable = []
     if primary_key != 'id':  # Si la clave primaria es algo distinto de 'id', agrégala primero
         fillable.append(f"'{primary_key}'")
-    fillable += [f"'{field['name']}'" for field in fields if not field.get('primary_key', False) and field['name'] != primary_key]
+    fillable += [f"'{field['name']}'" for field in fields if not field.get(
+        'primary_key', False) and field['name'] != primary_key]
 
     # Genera el contenido del modelo
     model_content = f"""<?php
@@ -456,7 +501,8 @@ class {table_name.capitalize()} extends Model
     with open(model_path, 'w') as model_file:
         model_file.write(model_content)
 
-    messagebox.showinfo("Model Generated", f"Model '{model_filename}' has been generated successfully at '{save_path}'.")
+    messagebox.showinfo(
+        "Model Generated", f"Model '{model_filename}' has been generated successfully at '{save_path}'.")
 
     # Guardar el modelo en el archivo
     model_filename = f"{table_name.capitalize()}.php"
@@ -464,7 +510,8 @@ class {table_name.capitalize()} extends Model
     with open(model_path, 'w') as model_file:
         model_file.write(model_content)
 
-    messagebox.showinfo("Model Generated", f"Model '{model_filename}' has been generated successfully at '{save_path}'.")
+    messagebox.showinfo(
+        "Model Generated", f"Model '{model_filename}' has been generated successfully at '{save_path}'.")
 
     # Escribe el contenido en el archivo en la ruta seleccionada
     file_path = os.path.join(save_path, f'{table_name.capitalize()}.php')
@@ -483,29 +530,44 @@ def generate_migration_from_sql(sql_schema, save_path=None):
         return "", []
     table_name = table_name_match.group(1)
 
-    fields = lines[1:-1]
+    primary_key = None  # Variable para almacenar el nombre del campo clave primaria
+    fields = lines[1:-1]  # Todos los campos, excepto la primera y última línea
     migration_fields = ""
+
+    # Buscar y establecer la clave primaria
+    pk_pattern = re.compile(r"PRIMARY KEY\s*\((.*?)\)", re.IGNORECASE)
+    pk_match = pk_pattern.search(sql_schema)
+    if pk_match:
+        primary_key = pk_match.group(1)
+
     for field in fields:
-        if not re.match(r"^\s*\w", field):
+        field = field.strip().strip(',')
+        # Saltar la definición de clave primaria
+        if field.startswith("PRIMARY KEY"):
             continue
 
-        field_parts = re.split(r"\s+", field.strip().strip(','), maxsplit=2)
+        field_parts = re.split(r"\s+", field, maxsplit=2)
         if len(field_parts) < 2:
             print(f"Skipping invalid field definition: {field}")
-            continue
+            continue  # No procesar líneas inválidas
 
         field_name, field_type = field_parts[:2]
         laravel_type, size, decimal_place = sql_to_laravel_type(field_type)
 
-        nullable = '->nullable()' if 'NOT NULL' not in field else ''
-        primary = '->primary()' if 'PRIMARY KEY' in field else ''
+        field_definition = f"$table->{laravel_type}('{field_name}'"
+        if size:
+            field_definition += f", {size}"
+            if decimal_place:
+                field_definition += f", {decimal_place}"
+        field_definition += ")"
+        if 'NOT NULL' not in field:
+            field_definition += "->nullable()"
 
-        if size and decimal_place:  # Para tipos como decimal que tienen dos parámetros numéricos
-            migration_fields += f"$table->{laravel_type}('{field_name}', {size}, {decimal_place}){nullable}{primary};\n            "
-        elif size:  # Para tipos que tienen un parámetro numérico
-            migration_fields += f"$table->{laravel_type}('{field_name}', {size}){nullable}{primary};\n            "
-        else:  # Para tipos sin parámetro numérico
-            migration_fields += f"$table->{laravel_type}('{field_name}'){nullable}{primary};\n            "
+        # Si el campo actual es la clave primaria, agregar ->primary()
+        if field_name == primary_key:
+            field_definition += "->primary()"
+
+        migration_fields += f"{field_definition};\n"
 
     migration_content = f"""<?php
 
@@ -518,9 +580,7 @@ class Create{pluralizar(table_name.capitalize())}Table extends Migration
     public function up()
     {{
         Schema::create('{pluralizar(table_name.lower())}', function (Blueprint $table) {{
-            {migration_fields}
-            
-            $table->timestamps();
+{migration_fields}            $table->timestamps();
         }});
     }}
 
@@ -532,6 +592,7 @@ class Create{pluralizar(table_name.capitalize())}Table extends Migration
 """
     return migration_content
 
+
 def generate_migration_filename(table_name):
     # Obtener la fecha y hora actuales con el formato de Laravel para nombres de archivos de migración
     timestamp = datetime.datetime.now().strftime('%Y_%m_%d_')
@@ -542,6 +603,7 @@ def generate_migration_filename(table_name):
     plural_table_name = pluralizar(table_name.lower())
 
     return f"{timestamp}{random_id}_create_{plural_table_name}_table.php"
+
 
 def generate_migration_only():
     save_path = filedialog.askdirectory()
@@ -558,6 +620,7 @@ def generate_migration_only():
         messagebox.showinfo(
             "Migration Generated", f"Migration file has been generated at: '{file_path}'")
 
+
 def write_to_file(filename, content, save_path):
     file_path = os.path.join(save_path, filename)
     with open(file_path, 'w') as file:
@@ -565,11 +628,13 @@ def write_to_file(filename, content, save_path):
     messagebox.showinfo(
         "File Generated", f"File {filename} has been generated at: '{file_path}'")
 
+
 def generate_routes():
     global table_name
     save_path = filedialog.askdirectory()
     if save_path and table_name:
         generate_routes_content(table_name, save_path)
+
 
 def generate_routes_content(table_name, save_path):
     routes_content = f"""<?php
@@ -597,11 +662,13 @@ Route::resource('/{pluralizar(table_name.lower())}', {table_name.capitalize()}Co
 """
     write_to_file('web.php', routes_content, save_path)
 
+
 def toggle_value(item, index, values_list):
     item_list = list(item)
     current_value = item_list[index]
     item_list[index] = values_list[1] if current_value == values_list[0] else values_list[0]
     return item_list
+
 
 def on_field_click(event):
     region = fields_table.identify_region(event.x, event.y)
@@ -618,6 +685,7 @@ def on_field_click(event):
     elif region == 'heading':
         return "break"
 
+
 def update_field_data(row_id, col_index, value):
     field_name = fields_table.item(row_id, 'values')[0]
     field_info = next(
@@ -629,6 +697,7 @@ def update_field_data(row_id, col_index, value):
             field_info['nullable'] = (value == CHECKBOX_TICKED)
         elif col_index == 5:
             field_info['mandatory'] = (value == CHECKBOX_TICKED)
+
 
 def edit_field_details(event):
     region = fields_table.identify_region(event.x, event.y)
@@ -648,6 +717,7 @@ def edit_field_details(event):
             fields_table.item(row_id, values=item_list)
             update_field_data_type_size(row_id, col_num, new_value)
 
+
 def update_field_data_type_size(row_id, col_num, value):
     field_name = fields_table.item(row_id, 'values')[0]
     field_info = next(
@@ -658,11 +728,13 @@ def update_field_data_type_size(row_id, col_num, value):
         elif col_num == 2:  # Size
             field_info['size'] = value
 
+
 def process_sql_and_update():
     sql = sql_input_text.get("1.0", tk.END)
     global table_name, fields
     table_name, fields = parse_sql_table(sql)
     load_fields_into_ui(fields)
+
 
 def load_fields_into_ui(fields):
     for i in fields_table.get_children():
@@ -678,6 +750,17 @@ def load_fields_into_ui(fields):
         ))
 
 
+def process_sql_and_update():
+    sql = sql_input_text.get("1.0", tk.END)
+    global table_name, fields
+    try:
+        # Llamar a parse_sql_table dentro del bloque try
+        table_name, fields = parse_sql_table(sql)
+        load_fields_into_ui(fields)
+    except SQLParsingError as e:
+        # Capturar la excepción SQLParsingError y mostrar el mensaje de error en pantalla
+        messagebox.showerror("SQL Parsing Error", str(e))
+
 
 # GUI setup
 app = tk.Tk()
@@ -687,10 +770,10 @@ app.title("CRUD Generator for Laravel")
 style = ttk.Style()
 style.configure('Pastel.TButton', borderwidth=0, width=20)
 
-style.configure('Button1.TButton', background='#47E72E')  
-style.configure('Button2.TButton', background='#87CEEB') 
-style.configure('Button3.TButton', background='#87CEEB')  
-style.configure('Button4.TButton', background='#FFD700')  
+style.configure('Button1.TButton', background='#47E72E')
+style.configure('Button2.TButton', background='#87CEEB')
+style.configure('Button3.TButton', background='#87CEEB')
+style.configure('Button4.TButton', background='#FFD700')
 
 # SQL input area
 sql_input_frame = tk.Frame(app)
@@ -701,7 +784,8 @@ sql_input_text = tk.Text(sql_input_frame, height=10)
 sql_input_text.pack(side='left', fill='x', expand=True)
 
 # Button to process SQL input
-process_button = ttk.Button(app, text="Process SQL", command=process_sql_and_update, style='Button1.TButton')
+process_button = ttk.Button(
+    app, text="Process SQL", command=process_sql_and_update, style='Button1.TButton')
 process_button.pack(pady=5)
 
 # Table to display detected fields
@@ -717,22 +801,28 @@ fields_table.pack(fill='both', expand=True)
 
 # Nuevo frame para organizar los botones en una sola fila
 buttons_frame = tk.Frame(app)
-buttons_frame.pack(fill='x', padx=10, pady=5)
+buttons_frame.pack(fill='x', padx=10, pady=1)
+
 
 # Organiza los botones lado a lado dentro del frame buttons_frame
-create_crud_files_button = ttk.Button(buttons_frame, text="Create CRUD Files", command=lambda: request_directory_and_create_files(table_name.lower(), fields), style='Button2.TButton')
+create_crud_files_button = ttk.Button(buttons_frame, text="Create CRUD Files", command=lambda: request_directory_and_create_files(
+    table_name.lower(), fields), style='Button2.TButton')
 create_crud_files_button.pack(side='left', fill='x', expand=True, padx=2)
 
-create_controller_button = ttk.Button(buttons_frame, text="Create Controller", command=lambda: create_controller(table_name, fields), style='Button3.TButton')
+create_controller_button = ttk.Button(buttons_frame, text="Create Controller",
+                                      command=lambda: create_controller(table_name, fields), style='Button3.TButton')
 create_controller_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_model_button = ttk.Button(buttons_frame, text="Generate Model", command=lambda: generate_model(table_name, fields), style='Button4.TButton')
+generate_model_button = ttk.Button(buttons_frame, text="Generate Model", command=lambda: generate_model(
+    table_name, fields), style='Button4.TButton')
 generate_model_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_migration_button = ttk.Button(buttons_frame, text="Generate Migration", command=generate_migration_only, style='Button4.TButton')
+generate_migration_button = ttk.Button(
+    buttons_frame, text="Generate Migration", command=generate_migration_only, style='Button4.TButton')
 generate_migration_button.pack(side='left', fill='x', expand=True, padx=2)
 
-generate_routes_button = ttk.Button(buttons_frame, text="Generate Routes", command=generate_routes, style='Button4.TButton')
+generate_routes_button = ttk.Button(
+    buttons_frame, text="Generate Routes", command=generate_routes, style='Button4.TButton')
 generate_routes_button.pack(side='left', fill='x', expand=True, padx=2)
 
 # Add bindings for click to toggle and double-click to edit
