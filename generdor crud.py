@@ -134,12 +134,9 @@ def generar_vista_registrar(fields, table_name):
 @stop
 """
 
-def generar_vista_listar(fields, table_name, mandatory_fields):
-    columnas = ''.join(
-        [f"                <th>{field.get('label', field['name'].capitalize())}</th>\n" for field in fields if field['name'] in mandatory_fields])
-    fields_data = ''.join(
-        [f"                <td>{{{{ ${table_name}->{field['name']} }}}}</td>\n" for field in fields if field['name'] in mandatory_fields])
-    # Asegúrate de que pluralizar maneje tus reglas de pluralización específicas correctamente.
+def generar_vista_listar(fields, table_name, mandatory_fields, primary_key):
+    columnas = ''.join([f"                <th>{field.get('label', field['name'].capitalize())}</th>\n" for field in fields if field['name'] in mandatory_fields])
+    fields_data = ''.join([f"                <td>{{{{ ${table_name}->{field['name']} }}}}</td>\n" for field in fields if field['name'] in mandatory_fields])
     table_name_plural = pluralizar(table_name)
     return f"""
 @extends('adminlte::page')
@@ -166,8 +163,8 @@ def generar_vista_listar(fields, table_name, mandatory_fields):
                     @foreach (${table_name_plural} as ${table_name})
                         <tr>
 {fields_data}                            <td>
-                                <a href="{{{{ route('{table_name_plural}.edit', ${table_name}->id) }}}}" class="btn btn-xs btn-primary">Editar</a>
-                                <form action="{{{{ route('{table_name_plural}.destroy', ${table_name}->id) }}}}" method="POST" style="display: inline-block;">
+                                <<a href="{{{{ route('{table_name_plural}.edit', ['{table_name}' => ${table_name}->{primary_key}]) }}}}" class="btn btn-xs btn-primary">Editar</a>
+                                <form action="{{{{ route('{table_name_plural}.destroy', ['{table_name}' => ${table_name}->{primary_key}]) }}}}" method="POST" style="display: inline-block;">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-xs btn-danger">Eliminar</button>
@@ -187,9 +184,7 @@ def generar_vista_listar(fields, table_name, mandatory_fields):
 @stop
 """
 
-def generar_vista_editar(fields, table_name):
-    # Simula valores actuales como un diccionario vacío por ahora
-    # Este diccionario debería llenarse con los valores actuales de cada campo si están disponibles
+def generar_vista_editar(fields, table_name, primary_key):
     valores_actuales = {}
     fields_html = generar_fields_html(fields, valores_actuales)
     table_name_plural = pluralizar(table_name)
@@ -219,7 +214,7 @@ def generar_vista_editar(fields, table_name):
     </div>
 @endif
 
-<form action="{{{{ route('{table_name_plural}.update', ${table_name}->id) }}}}" method="POST" autocomplete="off">
+<form action="{{{{ route('{table_name_plural}.update', ['{table_name}' => ${table_name}->{primary_key}]) }}}}" method="POST" autocomplete="off">
     @csrf
     @method('PUT')
 {fields_html}
@@ -246,16 +241,20 @@ def guardar_vista(table_name, contenido, nombre_archivo):
 def generar_y_guardar_vistas(table_name, fields):
     # Identificar los campos marcados como obligatorios
     mandatory_fields = [field['name'] for field in fields if field.get('mandatory', False)]
+    
+    # Identificar la clave primaria
+    primary_key = next((field['name'] for field in fields if field.get('primary_key', False)), 'id')
 
     # Generar contenido de las vistas
     contenido_registrar = generar_vista_registrar(fields, table_name)
-    contenido_listar = generar_vista_listar(fields, table_name, mandatory_fields)
-    contenido_editar = generar_vista_editar(fields, table_name)
+    contenido_listar = generar_vista_listar(fields, table_name, mandatory_fields, primary_key)
+    contenido_editar = generar_vista_editar(fields, table_name, primary_key)
 
     # Guardar las vistas
     guardar_vista(table_name, contenido_registrar, "registrar.blade.php")
     guardar_vista(table_name, contenido_listar, "listar.blade.php")
     guardar_vista(table_name, contenido_editar, "editar.blade.php")
+
 
 def request_directory_and_create_files(table_name, fields):
     # Solicitar al usuario que seleccione el directorio donde guardar los archivos
@@ -270,128 +269,6 @@ def request_directory_and_create_files(table_name, fields):
     generar_y_guardar_vistas(table_name, fields)
 
     messagebox.showinfo("Success", "CRUD files generated successfully.")
-
-def generate_controller(table_name, save_path):
-    controller_content = f"""<?php
-
-namespace App\\Http\\Controllers;
-
-use Illuminate\\Http\\Request;
-use App\\Models\\{table_name.capitalize()};
-
-class {table_name.capitalize()}Controller extends Controller
-{{
-    public function index()
-    {{
-        ${table_name.lower()}s = {table_name.capitalize()}::all();
-        return view('{table_name.lower()}s.listar', compact('{table_name.lower()}s'));
-    }}
-
-    public function create()
-    {{
-        return view('{table_name.lower()}s.registrar');
-    }}
-
-    public function store(Request $request)
-    {{
-        ${table_name.lower()} = new {table_name.capitalize()}($request->all());
-        ${table_name.lower()}->save();
-
-        return redirect()->route('{table_name.lower()}s.create')->with('success', '{table_name.capitalize()} creado exitosamente');
-    }}
-
-    public function show($id)
-    {{
-        ${table_name.lower()} = {table_name.capitalize()}::findOrFail($id);
-        return view('{table_name.lower()}s.show', compact('{table_name.lower()}'));
-    }}
-
-    public function edit($id)
-    {{
-        ${table_name.lower()} = {table_name.capitalize()}::findOrFail($id);
-        return view('{table_name.lower()}s.editar', compact('{table_name.lower()}'));
-    }}
-
-    public function update(Request $request, $id)
-    {{
-        ${table_name.lower()} = {table_name.capitalize()}::findOrFail($id);
-        ${table_name.lower()}->update($request->all());
-
-        return redirect()->route('{table_name.lower()}s.index')->with('success', '{table_name.capitalize()} actualizado exitosamente');
-    }}
-
-    public function destroy($id)
-    {{
-        ${table_name.lower()} = {table_name.capitalize()}::findOrFail($id);
-        ${table_name.lower()}->delete();
-
-        return redirect()->route('{table_name.lower()}s.index')->with('success', '{table_name.capitalize()} eliminado exitosamente');
-    }}
-}}
-"""
-    if not save_path.endswith('/'):
-        save_path += '/'
-    file_path = f"{save_path}{table_name.capitalize()}Controller.php"
-    with open(file_path, 'w') as f:
-        f.write(controller_content)
-    messagebox.showinfo("Controller Created",
-                        f"Controller created at: '{file_path}'")
-
-def create_controller(table_name):
-    if table_name and table_name != 'unknown':
-        root = tk.Tk()
-        root.withdraw()  # No queremos una ventana de TK completa, solo el diálogo
-        save_path = filedialog.askdirectory()  # Abre el diálogo para elegir carpeta
-        if save_path:  # Asegurarse de que el usuario no canceló el diálogo
-            generate_controller(table_name, save_path)
-        else:
-            messagebox.showerror("Error", "No folder selected.")
-    else:
-        messagebox.showerror(
-            "Error", "No valid table name found. Please check your input.")
-
-def generate_model(table_name, fields):
-    # Solicita al usuario que seleccione la ruta de guardado
-    root = tk.Tk()
-    root.withdraw()  # No queremos una ventana de TK completa, solo el diálogo
-    save_path = filedialog.askdirectory()  # Abre el diálogo para elegir carpeta
-
-    if not save_path:  # Si el usuario canceló el diálogo
-        messagebox.showerror("Error", "No folder selected.")
-        return  # Sale de la función sin hacer nada más
-
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-    fillable = [f"'{field['name']}'" for field in fields if not field.get(
-        'primary_key', False)]
-    model_content = f"""<?php
-
-namespace App\\Models;
-
-use Illuminate\\Database\\Eloquent\\Factories\\HasFactory;
-use Illuminate\\Database\\Eloquent\\Model;
-
-class {table_name.capitalize()} extends Model
-{{
-    use HasFactory;
-
-    protected $table = '{table_name.lower()}';
-
-    public $timestamps = false;
-
-    protected $fillable = [
-        {', '.join(fillable)}
-    ];
-
-    protected $guarded = [];
-}}
-"""
-    # Escribe el contenido en el archivo en la ruta seleccionada
-    file_path = os.path.join(save_path, f'{table_name.capitalize()}.php')
-    with open(file_path, 'w') as file:
-        file.write(model_content)
-    messagebox.showinfo("Model Generated",
-                        f"Model file generated at: '{file_path}'")
 
 def sql_to_laravel_type(sql_type):
     type_mapping = {
@@ -414,6 +291,188 @@ def sql_to_laravel_type(sql_type):
             return laravel_type, None, None
     else:
         return 'string', None, None
+    
+def sql_to_laravel_type(sql_type):
+    type_mapping = {
+        'varchar': ('string', True),  # True indica que soporta especificación de tamaño
+        'integer': ('integer', False),
+        'smallint': ('smallInteger', False),
+        'numeric': ('numeric', True),
+        'date': ('date', False)
+    }
+    match = re.match(r"(\w+)(?:\((\d+)(?:,(\d+))?\))?", sql_type, re.IGNORECASE)
+    if match:
+        sql_data_type, size, decimal_places = match.groups()
+        laravel_type, supports_size = type_mapping.get(sql_data_type.lower(), ('string', True))
+        return laravel_type, size if supports_size else None, decimal_places
+    else:
+        return 'string', None, None
+
+def generate_controller(table_name, fields, save_path):
+    # Encontrar el nombre de la clave primaria
+    primary_key = next((field['name'] for field in fields if field.get('primary_key', False)), 'id')
+    
+    validation_rules = []
+    for field in fields:
+        size = field.get('size')
+        laravel_type = 'string'  # Este ejemplo siempre usa string, ajusta según sea necesario
+        rule = f"'{field['name']}' => 'required|{laravel_type}"
+        if size:
+            rule += f"|max:{size}"
+        rule += "'"
+        validation_rules.append(rule)
+    
+    validation_rules_str = ",\n        ".join(validation_rules)
+
+    controller_content = f"""<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\{table_name.capitalize()};
+use Illuminate\Http\Request;
+
+class {table_name.capitalize()}Controller extends Controller
+{{
+    public function index()
+    {{
+        ${table_name.lower()}s = {table_name.capitalize()}::orderBy('{primary_key}', 'asc')->paginate(6);
+        return view('{table_name.lower()}s.listar', compact('{table_name.lower()}s'));
+    }}
+
+    public function create()
+    {{
+        return view('{table_name.lower()}s.registrar');
+    }}
+
+    public function store(Request $request)
+    {{
+        $request->validate([{validation_rules_str}]);
+
+        {table_name.capitalize()}::create($request->all());
+
+        return redirect()->route('{table_name.lower()}s.index')->with('success', '{table_name.capitalize()} creado con éxito.');
+    }}
+
+    public function show({table_name.capitalize()} ${table_name.lower()})
+    {{
+        // Implementación del método show
+    }}
+
+    public function edit({table_name.capitalize()} ${table_name.lower()})
+    {{
+        return view('{table_name.lower()}s.editar', compact('{table_name.lower()}'));
+    }}
+
+    public function update(Request $request, {table_name.capitalize()} ${table_name.lower()})
+    {{
+        $request->validate([{validation_rules_str}
+        ]);
+
+        ${table_name.lower()}->update($request->all());
+
+        return redirect()->route('{table_name.lower()}s.index')->with('success', '{table_name.capitalize()} actualizado con éxito.');
+    }}
+
+    public function destroy({table_name.capitalize()} ${table_name.lower()})
+    {{
+        ${table_name.lower()}->delete();
+
+        return redirect()->route('{table_name.lower()}s.index')->with('success', '{table_name.capitalize()} eliminado con éxito.');
+    }}
+}}
+"""
+    if not save_path.endswith('/'):
+        save_path += '/'
+    file_path = f"{save_path}{table_name.capitalize()}Controller.php"
+    with open(file_path, 'w') as f:
+        f.write(controller_content)
+    # Ya no se necesita el print, porque vamos a mostrar un cuadro de diálogo
+    return file_path  # Devuelve la ruta del archivo para mostrarla en el cuadro de diálogo
+
+
+def create_controller(table_name, fields):
+    if table_name and table_name != 'unknown':
+        root = tk.Tk()
+        root.withdraw()  # No queremos una ventana de TK completa, solo el diálogo
+        save_path = filedialog.askdirectory()  # Abre el diálogo para elegir carpeta
+        if save_path:  # Asegurarse de que el usuario no canceló el diálogo
+            controller_path = generate_controller(table_name, fields, save_path)
+            messagebox.showinfo("Controller Generated", f"Controller file has been generated at: '{controller_path}'")
+        else:
+            messagebox.showerror("Error", "No folder selected.")
+    else:
+        messagebox.showerror("Error", "No valid table name found. Please check your input.")
+
+def generate_model(table_name, fields):
+    # Inicializa la ventana de Tkinter
+    root = tk.Tk()
+    root.withdraw()  # Oculta la ventana principal de Tkinter
+
+    # Solicita al usuario que seleccione la ruta de guardado
+    save_path = filedialog.askdirectory()
+
+    if not save_path:  # Si el usuario cancela la selección
+        messagebox.showerror("Error", "No folder selected.")
+        return
+
+    # Encuentra el campo clave primaria
+    primary_key_field = next((field for field in fields if field.get('primary_key', False)), None)
+    primary_key = primary_key_field['name'] if primary_key_field else 'id'
+
+    # Asegura que la clave primaria sea el primer elemento en `fillable` si no es 'id'
+    fillable = []
+    if primary_key != 'id':  # Si la clave primaria es algo distinto de 'id', agrégala primero
+        fillable.append(f"'{primary_key}'")
+    fillable += [f"'{field['name']}'" for field in fields if not field.get('primary_key', False) and field['name'] != primary_key]
+
+    # Genera el contenido del modelo
+    model_content = f"""<?php
+
+namespace App\\Models;
+
+use Illuminate\\Database\\Eloquent\\Factories\\HasFactory;
+use Illuminate\\Database\\Eloquent\\Model;
+
+class {table_name.capitalize()} extends Model
+{{
+    use HasFactory;
+
+    
+    protected $primaryKey = '{primary_key}';
+
+    
+
+    protected $fillable = [
+        {', '.join(fillable)}
+    ];
+    public $timestamps = false;
+    protected $guarded = [];
+}}
+"""
+
+    # Guarda el modelo en el archivo especificado
+    model_filename = f"{table_name.capitalize()}.php"
+    model_path = os.path.join(save_path, model_filename)
+    with open(model_path, 'w') as model_file:
+        model_file.write(model_content)
+
+    messagebox.showinfo("Model Generated", f"Model '{model_filename}' has been generated successfully at '{save_path}'.")
+
+    # Guardar el modelo en el archivo
+    model_filename = f"{table_name.capitalize()}.php"
+    model_path = os.path.join(save_path, model_filename)
+    with open(model_path, 'w') as model_file:
+        model_file.write(model_content)
+
+    messagebox.showinfo("Model Generated", f"Model '{model_filename}' has been generated successfully at '{save_path}'.")
+
+    # Escribe el contenido en el archivo en la ruta seleccionada
+    file_path = os.path.join(save_path, f'{table_name.capitalize()}.php')
+    with open(file_path, 'w') as file:
+        file.write(model_content)
+    messagebox.showinfo("Model Generated",
+                        f"Model file generated at: '{file_path}'")
+
 
 def generate_migration_from_sql(sql_schema, save_path=None):
     lines = sql_schema.strip().split('\n')
@@ -460,6 +519,8 @@ class Create{pluralizar(table_name.capitalize())}Table extends Migration
     {{
         Schema::create('{pluralizar(table_name.lower())}', function (Blueprint $table) {{
             {migration_fields}
+            
+            $table->timestamps();
         }});
     }}
 
@@ -662,7 +723,7 @@ buttons_frame.pack(fill='x', padx=10, pady=5)
 create_crud_files_button = ttk.Button(buttons_frame, text="Create CRUD Files", command=lambda: request_directory_and_create_files(table_name.lower(), fields), style='Button2.TButton')
 create_crud_files_button.pack(side='left', fill='x', expand=True, padx=2)
 
-create_controller_button = ttk.Button(buttons_frame, text="Create Controller", command=lambda: create_controller(table_name), style='Button3.TButton')
+create_controller_button = ttk.Button(buttons_frame, text="Create Controller", command=lambda: create_controller(table_name, fields), style='Button3.TButton')
 create_controller_button.pack(side='left', fill='x', expand=True, padx=2)
 
 generate_model_button = ttk.Button(buttons_frame, text="Generate Model", command=lambda: generate_model(table_name, fields), style='Button4.TButton')
