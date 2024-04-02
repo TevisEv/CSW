@@ -1,0 +1,13 @@
+Antes de correr el proyecto:
+composer install
+
+Nuestro archivo de prueba fue creado de manera optimizada por phpunit:
+Nombre: ClientControllerTest.php
+ERRORES: Se espera recibir un estatus code 422 o un 404 en algunos casos saltara el estatus code de 302 pero solo son manejo de exceptiones.
+SUCCESS: Se espera recibir un OK o un estatus code 200
+
+--PRUEBAS UNITARIAS--
+.\vendor\bin\phpunit.bat
+
+--PRUEBAS UNITARIAS DE UNA FUNCION ESPECIFICA--
+.\vendor\bin\phpunit.bat --filter test_store_client_invalid_NRODOCUMENTO_return_404

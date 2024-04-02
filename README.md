@@ -1,110 +1,66 @@
+<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-# INTEGRANTES
+<p align="center">
+<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+</p>
 
-- `ALARCON GOMEZ BILY ALEXIS`
-- `ESPIRITU VILLAR TEVIS`
-- `HORNA CERNA DAYANA ESTEFANY`
-- `HURTADO MILIAN JEAN HARLEY`
-- `DURAND PALACIOS ABIGAIL`
+## About Laravel
 
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
-# Documentación del Generador de CRUD para Laravel
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+- [Powerful dependency injection container](https://laravel.com/docs/container).
+- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+- [Robust background job processing](https://laravel.com/docs/queues).
+- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
 
-Esta aplicación en Python está diseñada para automatizar la generación de operaciones CRUD (Crear, Leer, Actualizar, Eliminar) en proyectos Laravel. Permite a los usuarios introducir definiciones de esquemas SQL y genera archivos correspondientes de modelo, migración, controlador y vistas en Laravel, así como definiciones de rutas. Adicionalmente, ofrece una interfaz gráfica de usuario (GUI) para una interacción más sencilla.
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
-## Características
+## Learning Laravel
 
-- Análisis de sentencias SQL `CREATE TABLE` para extraer la estructura de la tabla.
-- Generación de archivos de modelo Laravel basados en el esquema SQL.
-- Creación de archivos de migración Laravel con definiciones de esquema.
-- Generación de archivos de controlador Laravel con operaciones CRUD.
-- Creación de archivos de vista Blade Laravel para operaciones de registro, listado y edición.
-- Generación automática de rutas web para las operaciones CRUD.
-- GUI para una interacción fácil y operativa.
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
 
-## Requisitos
+You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
 
-- Python 3.x
-- Biblioteca Tkinter para la GUI.
-- Conocimientos básicos de SQL y el framework Laravel.
+If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
 
-## Descripción de la Interfaz Gráfica
+## Laravel Sponsors
 
-La interfaz de la aplicación incluye:
+We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
 
-- **Área de Sentencia SQL**: Un área de texto donde puedes pegar tu sentencia SQL `CREATE TABLE`.
-- **Botón Procesar SQL**: Procesa la entrada SQL para extraer detalles de la tabla.
-- **Visualización de Campos**: Muestra los campos extraídos de la sentencia SQL, permitiendo alternar propiedades como clave primaria, nullable y obligatorio haciendo clic.
-- **Botones de Operaciones CRUD**: Botones para generar archivos CRUD, modelo, controlador, migración y rutas para la aplicación Laravel.
+### Premium Partners
 
-## Uso
+- **[Vehikl](https://vehikl.com/)**
+- **[Tighten Co.](https://tighten.co)**
+- **[WebReinvent](https://webreinvent.com/)**
+- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
+- **[64 Robots](https://64robots.com)**
+- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
+- **[Cyber-Duck](https://cyber-duck.co.uk)**
+- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
+- **[Jump24](https://jump24.co.uk)**
+- **[Redberry](https://redberry.international/laravel/)**
+- **[Active Logic](https://activelogic.com)**
+- **[byte5](https://byte5.de)**
+- **[OP.GG](https://op.gg)**
 
-1. **Inicio de la Aplicación**: Inicia la aplicación. Debería aparecer la GUI.
-2. **Introducir Esquema SQL**: Pega tu sentencia SQL `CREATE TABLE` en el área designada.
-**Ejemplo de tablas**: 
+## Contributing
 
-`TABLA CLIENTE`
+Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
-CREATE TABLE CLIENTE
-(
-  NRODOCUMENTO Varchar(12) NOT NULL,
-  TIPODOCUMENTO Varchar(2),
-  LINK Varchar(36),
-  RAZONNOMBRE Varchar(255),
-  DIASCREDITO Smallint,
-  LIMITECREDITO Numeric(16,6),
-  EMAIL Varchar(64),
-  TELEFONO Varchar(48),
-  CONTACTO Varchar(64),
-  CLAVEWEB Varchar(16),
-  TIPOCLIENTE Varchar(64),
-  TIPOORIGEN Smallint,
-  FECHANACIMIENTO Date,
-  OCUPACION Varchar(128),
-  DIRECCION Varchar(250),
-  REFERENCIA Varchar(250),
-  DNIFAMILIAR Varchar(12),
-  TELEFONOCONTACTO Varchar(16),
-  FECULTIMACOMPRA Date,
-  DOCULTIMACOMPRA Varchar(18),
-  PORCENTAJE_DESCUENTO Numeric(16,2),
-  PORCENTAJE_MORA Numeric(16,2),
-  PRIMARY KEY (NRODOCUMENTO)
-);
+## Code of Conduct
 
-`TABLA PROVEEDOR`
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
-CREATE TABLE PROVEEDOR
-(
-  RUC Varchar(12) NOT NULL,
-  RAZONSOCIAL Varchar(256),
-  DIASCREDITO Integer,
-  CODCUENTA Varchar(18),
-  LIMITECREDITO Numeric(16,6),
-  CUENTABANCARIA Varchar(64),
-  SERIE Varchar(6),
-  DIRECCION Varchar(128),
-  EMAIL Varchar(36),
-  TELEFONO Varchar(16),
-  CONTACTO Varchar(64),
-  FECHA Date,
-  PRIMARY KEY (RUC)
-);
+## Security Vulnerabilities
 
+If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
-3. **Procesar SQL**: Haz clic en "Procesar SQL" para extraer los detalles de la tabla. Los campos y sus propiedades se mostrarán.
-4. **Revisar y Editar Campos**: Haz clic en las propiedades de los campos para alternarlas. Haz doble clic en tipo o tamaño para editar los valores.
-5. **Generar Archivos**:
-   - **Vistas Blade de Laravel (archivos de vista)**: En la generación de las vistas Blade de Laravel para operaciones CRUD, particularmente en el archivo `listar.blade.php`, se utiliza el atributo `mandatory` para determinar qué campos deben mostrarse en la vista de listado. Solo los campos marcados como `mandatory` son incluidos en la tabla de listado, lo que significa que estos campos son considerados esenciales o importantes para ser mostrados a los usuarios cuando visualizan la lista de registros de la base de datos.
-    - **Controlador de Laravel**: Aunque el código para la generación del controlador en sí no se muestra en el fragmento proporcionado, el atributo `mandatory` puede influir en la validación dentro de los métodos del controlador. Por ejemplo, al crear o actualizar registros en la base de datos, los campos marcados como `mandatory` podrían requerirse en la validación, asegurando que los datos esenciales sean proporcionados antes de que la operación CRUD se realice efectivamente.
-    - **Modelo de Laravel**:  Crea un modelo Laravel con atributos basados en el esquema SQL.
-    - **Migración de Laravel**:  Crea un archivo de migración Laravel para el esquema de la base de datos.
-    - **Rutas web de Laravel**: Genera rutas web para las operaciones CRUD.
+## License
 
-## Funciones Adicionales
-
-- **Excepciones Personalizadas**: Define `SQLParsingError` para manejar excepciones de análisis SQL.
-- **Pluralización y Conversión de Tipo de Entrada HTML**: Funciones para manejar la pluralización de sustantivos en español y la conversión de tipos de datos SQL a tipos de entrada HTML.
-- **Generación y Guardado de Archivos**: Funciones para generar el contenido de archivos de modelo, controlador, migración y vistas y guardarlos en el directorio seleccionado por el usuario.
-
-
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
