@@ -1,5 +1,17 @@
-Antes de correr el proyecto:
-composer install
+        Antes de correr el proyecto:
+-composer install
+-npm install 
+
+-el archivo .env.example renombrarlo a .env 
+-crear una base de datos 
+-Poner el nombre de tu base de datos en el archivo .env en la variable DB_DATABASE=
+-verficar el puerto DB_PORT=3306 (si no funciona poner DB_PORT=8889)
+- generar un APP_KEY= para la seguridad del sitio web, se genera automaticamente pero si quieres crear uno manualmente pones algo como este APP
+-php artisan key:generate
+
+-Hacer las migraciones  con "php artisan migrate"
+
+Pruebas unitarias
 
 Nuestro archivo de prueba fue creado de manera optimizada por phpunit:
 Nombre: ClientControllerTest.php
