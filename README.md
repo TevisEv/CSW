@@ -3,11 +3,11 @@
 
 - `ALARCON GOMEZ BILY ALEXIS`
 - `ESPIRITU VILLAR TEVIS`
-- `HORNA CERNA DAYANA ESTEFANY`
+- `HORNA CERNA DAYANA ESTEFANY` 
 - `HURTADO MILIAN JEAN HARLEY`
 - `DURAND PALACIOS ABIGAIL`
      
-
+      
 # Documentación del Generador de CRUD para Laravel
 
 Esta aplicación en Python está diseñada para automatizar la generación de operaciones CRUD (Crear, Leer, Actualizar, Eliminar) en proyectos Laravel. Permite a los usuarios introducir definiciones de esquemas SQL y genera archivos correspondientes de modelo, migración, controlador y vistas en Laravel, así como definiciones de rutas. Adicionalmente, ofrece una interfaz gráfica de usuario (GUI) para una interacción más sencilla.
