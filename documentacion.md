@@ -1,6 +1,6 @@
-## revisar el archivo bitacora.txt para correr el sistema
+## revisar el archivo bitacora.md para correr el sistema
 
-
+    
 # Documentación de Pruebas Unitarias para ClienteController
 
 Este documento describe las pruebas unitarias implementadas para el `ClienteController` dentro de una aplicación Laravel. Las pruebas están diseñadas para garantizar que la lógica de negocio relacionada con la creación y actualización de clientes funcione correctamente.
