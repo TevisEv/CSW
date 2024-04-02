@@ -26,6 +26,9 @@ Sigue los siguientes pasos para configurar el entorno del proyecto:
 4. **Migraciones**:
    Ejecuta `php artisan migrate` para realizar las migraciones a la base de datos. Esto estructurará la base de datos según lo definido en tus archivos de migración.
 
+5. **Error al migrar**:
+Si te encuentras con un error al ejecutar las migraciones (`php artisan migrate`), usa el comando  `php artisan migrate:fresh`
+
 ## Pruebas Unitarias
 
 ### Ejecutar Todas las Pruebas Unitarias
